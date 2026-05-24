@@ -17,11 +17,13 @@ import {
 import { toast } from "sonner"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { LOGO_BASE64 } from "@/lib/logo-base64"
 import Image from "next/image"
 
 export function SuccessPage() {
   const { trackingId, data, isSubmitted } = useRegistrationStore()
   const [pdfHtml, setPdfHtml] = useState<string | null>(null)
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null)
   const [loadingPdf, setLoadingPdf] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [emailContent, setEmailContent] = useState<string | null>(null)
@@ -45,6 +47,9 @@ export function SuccessPage() {
       const result = await response.json()
       if (result.success) {
         setPdfHtml(result.html)
+        if (result.qrCode) {
+          setQrCodeDataUrl(result.qrCode)
+        }
       }
     } catch (err) {
       toast.error("Failed to generate document")
@@ -84,7 +89,6 @@ export function SuccessPage() {
     }
     printWindow.document.write(pdfHtml)
     printWindow.document.close()
-    // Wait for content to render, then print
     printWindow.onload = () => {
       setTimeout(() => {
         printWindow.print()
@@ -92,97 +96,414 @@ export function SuccessPage() {
     }
   }, [pdfHtml])
 
-  // Download as crisp PDF using html2canvas at 4x + PNG lossless
+  // Download as crisp vector PDF using jsPDF directly (no html2canvas!)
   const handleDownloadPdf = useCallback(async () => {
-    if (!pdfHtml) return
+    if (!trackingId) return
 
     setDownloading(true)
     toast.info("Generating PDF document...")
 
     try {
-      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-        import("jspdf"),
-        import("html2canvas-pro"),
-      ])
+      const { default: jsPDF } = await import("jspdf")
 
-      // Create a hidden render container
-      const container = document.createElement("div")
-      container.style.position = "fixed"
-      container.style.left = "-9999px"
-      container.style.top = "0"
-      container.style.width = "794px"
-      container.style.background = "white"
-      container.style.zIndex = "-1"
-      document.body.appendChild(container)
-
-      // Render HTML into it
-      container.innerHTML = pdfHtml
-
-      // Wait for all images to load
-      const images = container.querySelectorAll("img")
-      await Promise.all(
-        Array.from(images).map(
-          (img) =>
-            new Promise<void>((resolve) => {
-              if (img.complete) resolve()
-              else {
-                img.onload = () => resolve()
-                img.onerror = () => resolve()
-              }
-            })
-        )
-      )
-
-      // Extra render time
-      await new Promise((r) => setTimeout(r, 500))
-
-      // Capture at 4x scale for super crisp text
-      const canvas = await html2canvas(container, {
-        scale: 4,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        width: 794,
-        logging: false,
-      })
-
-      // Clean up render container
-      document.body.removeChild(container)
-
-      // A4 in mm
-      const a4Width = 210
-      const a4Height = 297
-
-      const pdf = new jsPDF({
+      const doc = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: "a4",
       })
 
-      const canvasWidth = canvas.width
-      const canvasHeight = canvas.height
-      const imgWidth = a4Width
-      const imgHeight = (canvasHeight * a4Width) / canvasWidth
+      // A4: 210 x 297 mm
+      const pw = 210
+      const ph = 297
+      const m = 14 // margin
 
-      // Use PNG for lossless text quality
-      const imgData = canvas.toDataURL("image/png")
+      // Colors
+      const cDark = [10, 22, 40]
+      const cSubDark = [19, 29, 53]
+      const cText = [15, 23, 42]
+      const cMuted = [100, 116, 139]
+      const cGold = [212, 168, 67]
+      const cBorder = [203, 213, 225]
+      const cLightBg = [241, 245, 249]
+      const cWhite = [255, 255, 255]
 
-      if (imgHeight <= a4Height) {
-        pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight)
-      } else {
-        let heightLeft = imgHeight
-        let position = 0
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight)
-        heightLeft -= a4Height
-        while (heightLeft > 0) {
-          position -= a4Height
-          pdf.addPage()
-          pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight)
-          heightLeft -= a4Height
+      // ── HEADER BAND ──────────────────────────────────────
+      doc.setFillColor(...cDark)
+      doc.rect(0, 0, pw, 34, "F")
+
+      // Logo
+      try {
+        doc.addImage(LOGO_BASE64, "PNG", m, 5, 22, 22)
+      } catch {
+        // Fallback: draw placeholder
+        doc.setFillColor(...cGold)
+        doc.roundedRect(m, 5, 22, 22, 3, 3, "F")
+        doc.setTextColor(...cDark)
+        doc.setFontSize(14)
+        doc.setFont("helvetica", "bold")
+        doc.text("FM", m + 11, 18, { align: "center" })
+      }
+
+      // Brand name
+      doc.setTextColor(...cWhite)
+      doc.setFontSize(22)
+      doc.setFont("helvetica", "bold")
+      doc.text("FrameMaxx", m + 28, 15)
+
+      // Brand tagline
+      doc.setTextColor(148, 163, 184)
+      doc.setFontSize(7)
+      doc.setFont("helvetica", "normal")
+      doc.text("PROFESSIONAL AGENCY", m + 28, 20)
+
+      // Document label (right side)
+      doc.setTextColor(...cMuted)
+      doc.setFontSize(7)
+      doc.setFont("helvetica", "normal")
+      doc.text("OFFICIAL DOCUMENT", pw - m, 12, { align: "right" })
+
+      // Document title (right side)
+      doc.setTextColor(...cWhite)
+      doc.setFontSize(13)
+      doc.setFont("helvetica", "bold")
+      doc.text("Registration Certificate", pw - m, 20, { align: "right" })
+
+      // ── SUB HEADER ───────────────────────────────────────
+      doc.setFillColor(...cSubDark)
+      doc.rect(0, 34, pw, 16, "F")
+
+      // Tracking ID chip background (simulated transparency with solid colors)
+      doc.setDrawColor(50, 65, 100)
+      doc.setLineWidth(0.3)
+      doc.setFillColor(30, 42, 70)
+      doc.roundedRect(m, 37, 72, 10, 1.5, 1.5, "FD")
+
+      // Tracking ID label
+      doc.setTextColor(148, 163, 184)
+      doc.setFontSize(6)
+      doc.setFont("helvetica", "bold")
+      doc.text("TRACKING ID", m + 5, 41.5)
+
+      // Tracking ID value
+      doc.setTextColor(226, 232, 240)
+      doc.setFontSize(9)
+      doc.setFont("courier", "bold")
+      doc.text(trackingId, m + 5, 45.5)
+
+      // QR Code
+      if (qrCodeDataUrl) {
+        try {
+          doc.addImage(qrCodeDataUrl, "PNG", pw - m - 13, 36, 12, 12)
+        } catch {
+          // Skip QR if image fails
+        }
+        doc.setTextColor(...cMuted)
+        doc.setFontSize(5)
+        doc.setFont("helvetica", "normal")
+        doc.text("Scan to verify", pw - m - 13, 50)
+      }
+
+      // ── HELPER FUNCTIONS ─────────────────────────────────
+      let y = 54
+
+      const drawSection = (title: string, letter: string, sy: number): number => {
+        // Icon box
+        doc.setFillColor(...cDark)
+        doc.roundedRect(m, sy, 6, 6, 1, 1, "F")
+        doc.setTextColor(...cGold)
+        doc.setFontSize(8)
+        doc.setFont("helvetica", "bold")
+        doc.text(letter, m + 3, sy + 4.2, { align: "center" })
+
+        // Title
+        doc.setTextColor(...cDark)
+        doc.setFontSize(10)
+        doc.setFont("helvetica", "bold")
+        doc.text(title.toUpperCase(), m + 9, sy + 4.5)
+
+        // Underline
+        doc.setDrawColor(...cDark)
+        doc.setLineWidth(0.8)
+        doc.line(m, sy + 7, pw - m, sy + 7)
+
+        return sy + 10
+      }
+
+      const fh = 11 // field row height
+      const hw = (pw - 2 * m) / 2 // half width
+
+      const drawFieldRow = (
+        label1: string,
+        value1: string,
+        label2: string,
+        value2: string,
+        fy: number,
+        fullSpan = false
+      ) => {
+        const rowW = fullSpan ? pw - 2 * m : hw
+
+        // Cell 1
+        doc.setDrawColor(...cBorder)
+        doc.setLineWidth(0.3)
+        doc.rect(m, fy, rowW, fh)
+
+        // Label 1
+        doc.setTextColor(...cMuted)
+        doc.setFontSize(6)
+        doc.setFont("helvetica", "bold")
+        doc.text(label1.toUpperCase(), m + 2.5, fy + 3.5)
+
+        // Value 1
+        if (!value1) {
+          doc.setTextColor(148, 163, 184)
+          doc.setFont("helvetica", "italic")
+        } else {
+          doc.setTextColor(...cText)
+          doc.setFont("helvetica", "bold")
+        }
+        doc.setFontSize(9)
+        let dv1 = value1 || "Not specified"
+        const mw1 = rowW - 5
+        if (doc.getTextWidth(dv1) > mw1) {
+          while (doc.getTextWidth(dv1 + "...") > mw1 && dv1.length > 0) {
+            dv1 = dv1.slice(0, -1)
+          }
+          dv1 += "..."
+        }
+        doc.text(dv1, m + 2.5, fy + 8)
+
+        if (!fullSpan) {
+          // Cell 2
+          doc.rect(m + hw, fy, hw, fh)
+
+          // Label 2
+          doc.setTextColor(...cMuted)
+          doc.setFontSize(6)
+          doc.setFont("helvetica", "bold")
+          doc.text(label2.toUpperCase(), m + hw + 2.5, fy + 3.5)
+
+          // Value 2
+          if (!value2) {
+            doc.setTextColor(148, 163, 184)
+            doc.setFont("helvetica", "italic")
+          } else {
+            doc.setTextColor(...cText)
+            doc.setFont("helvetica", "bold")
+          }
+          doc.setFontSize(9)
+          let dv2 = value2 || "Not specified"
+          const mw2 = hw - 5
+          if (doc.getTextWidth(dv2) > mw2) {
+            while (doc.getTextWidth(dv2 + "...") > mw2 && dv2.length > 0) {
+              dv2 = dv2.slice(0, -1)
+            }
+            dv2 += "..."
+          }
+          doc.text(dv2, m + hw + 2.5, fy + 8)
         }
       }
 
-      pdf.save(`FrameMaxx-Registration-${trackingId}.pdf`)
+      // ── PERSONAL INFORMATION ─────────────────────────────
+      y = drawSection("Personal Information", "P", y)
+
+      const formatDOB = (dob: string) => {
+        if (!dob) return ""
+        try {
+          return new Date(dob + "T00:00:00").toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+        } catch {
+          return dob
+        }
+      }
+
+      drawFieldRow(
+        "Full Name",
+        `${data.firstName} ${data.lastName}`,
+        "Date of Birth",
+        formatDOB(data.dateOfBirth),
+        y
+      )
+      y += fh
+
+      drawFieldRow(
+        "Gender",
+        data.gender,
+        "Nationality",
+        data.nationality,
+        y
+      )
+      y += fh
+
+      drawFieldRow(
+        data.nidPassportType === "Passport" ? "Passport Number" : "National ID Number",
+        data.nidPassportNumber,
+        "ID Type",
+        data.nidPassportType === "Passport" ? "Passport" : "National ID (NID)",
+        y
+      )
+      y += fh + 4
+
+      // ── CONTACT INFORMATION ──────────────────────────────
+      y = drawSection("Contact Information", "C", y)
+
+      drawFieldRow(
+        "Email Address",
+        data.email,
+        "Phone Number",
+        data.phone,
+        y
+      )
+      y += fh
+
+      const fullAddr = `${data.address || ""}${data.city ? ", " + data.city : ""}${data.state ? ", " + data.state : ""}${data.postalCode ? " " + data.postalCode : ""}${data.country ? ", " + data.country : ""}`
+      drawFieldRow("Address", fullAddr, "", "", y, true)
+      y += fh + 4
+
+      // ── PROFESSIONAL INFORMATION ─────────────────────────
+      y = drawSection("Professional Information", "W", y)
+
+      drawFieldRow(
+        "Occupation / Job Title",
+        data.occupation,
+        "Current Company",
+        data.company,
+        y
+      )
+      y += fh
+
+      drawFieldRow(
+        "Experience Level",
+        data.experience,
+        "Department of Interest",
+        data.department,
+        y
+      )
+      y += fh
+
+      drawFieldRow("Skills & Expertise", data.skills, "", "", y, true)
+      y += fh + 5
+
+      // ── SIGNATURE SECTION ────────────────────────────────
+      doc.setDrawColor(226, 232, 240)
+      doc.setLineWidth(0.6)
+      doc.line(m, y, pw - m, y)
+      y += 3
+
+      doc.setTextColor(...cMuted)
+      doc.setFontSize(6)
+      doc.setFont("helvetica", "bold")
+      doc.text("APPLICANT DECLARATION & SIGNATURE", m, y + 3)
+      y += 7
+
+      // Signature line
+      doc.setDrawColor(...cDark)
+      doc.setLineWidth(0.3)
+      doc.line(m, y + 15, m + 55, y + 15)
+
+      // Add signature image
+      const sigData = data.signatureData
+      if (sigData && sigData.startsWith("data:")) {
+        try {
+          doc.addImage(sigData, "PNG", m + 5, y - 2, 45, 16)
+        } catch {
+          // Skip signature image if it fails
+        }
+      }
+
+      // Name under line
+      doc.setTextColor(...cText)
+      doc.setFontSize(8)
+      doc.setFont("helvetica", "bold")
+      doc.text(`${data.firstName} ${data.lastName}`, m, y + 19)
+
+      doc.setTextColor(...cMuted)
+      doc.setFontSize(6)
+      doc.setFont("helvetica", "normal")
+      doc.text("Applicant Signature", m, y + 23)
+
+      // Date on right side
+      const now = new Date()
+      const dateStr = now.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+      const timeStr = now.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+
+      doc.setTextColor(...cText)
+      doc.setFontSize(9)
+      doc.setFont("helvetica", "bold")
+      doc.text(dateStr, pw - m, y + 3, { align: "right" })
+      doc.setFontSize(8)
+      doc.setFont("helvetica", "normal")
+      doc.setTextColor(71, 85, 105)
+      doc.text(timeStr, pw - m, y + 8, { align: "right" })
+      doc.setTextColor(...cMuted)
+      doc.setFontSize(6)
+      doc.text("Date & Time of Submission", pw - m, y + 12, { align: "right" })
+
+      y += 27
+
+      // ── DISCLAIMER ───────────────────────────────────────
+      doc.setFillColor(...cLightBg)
+      doc.rect(m, y, pw - 2 * m, 15, "F")
+      doc.setFillColor(...cDark)
+      doc.rect(m, y, 1.2, 15, "F")
+
+      doc.setTextColor(...cMuted)
+      doc.setFontSize(6.5)
+      doc.setFont("helvetica", "normal")
+      const disclaimer =
+        "Confidential: This document is auto-generated by the FrameMaxx Registration Portal and contains confidential information. The digital signature above confirms the applicant's agreement to the Privacy Policy and Terms & Conditions. Unauthorized reproduction or distribution is prohibited. For verification, scan the QR code or contact support@framemaxx.com with tracking ID " +
+        trackingId +
+        "."
+      doc.text(disclaimer, m + 4, y + 4, {
+        maxWidth: pw - 2 * m - 8,
+      })
+
+      // ── FOOTER BAND ──────────────────────────────────────
+      const footerY = ph - 14
+      doc.setFillColor(...cDark)
+      doc.rect(0, footerY, pw, 14, "F")
+
+      // Left side
+      doc.setTextColor(148, 163, 184)
+      doc.setFontSize(6.5)
+      doc.setFont("helvetica", "bold")
+      doc.text("FrameMaxx", m, footerY + 5.5)
+      doc.setFont("helvetica", "normal")
+      doc.setTextColor(...cMuted)
+      doc.text("  \u2014  Official Registration Document", m + 16, footerY + 5.5)
+
+      // Tracking ID badge (simulated transparency)
+      doc.setDrawColor(40, 55, 85)
+      doc.setFillColor(22, 38, 62)
+      doc.setLineWidth(0.2)
+      doc.roundedRect(m + 72, footerY + 2.5, 32, 5, 1, 1, "FD")
+      doc.setTextColor(148, 163, 184)
+      doc.setFont("courier", "bold")
+      doc.setFontSize(5.5)
+      doc.text(trackingId, m + 74, footerY + 6)
+
+      // Right side
+      doc.setTextColor(71, 85, 105)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(5.5)
+      doc.text(
+        `Generated ${dateStr} at ${timeStr}  \u2022  Page 1 of 1`,
+        pw - m,
+        footerY + 5.5,
+        { align: "right" }
+      )
+
+      // Save the PDF
+      doc.save(`FrameMaxx-Registration-${trackingId}.pdf`)
       toast.success("PDF downloaded successfully!")
     } catch (error) {
       console.error("PDF download error:", error)
@@ -190,7 +511,7 @@ export function SuccessPage() {
     } finally {
       setDownloading(false)
     }
-  }, [pdfHtml, trackingId])
+  }, [trackingId, data, qrCodeDataUrl])
 
   const copyTrackingId = () => {
     if (trackingId) {
@@ -277,7 +598,7 @@ export function SuccessPage() {
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button
                   onClick={handleDownloadPdf}
-                  disabled={loadingPdf || !pdfHtml || downloading}
+                  disabled={loadingPdf || !trackingId || downloading}
                   className="bg-[var(--brand)] hover:bg-[var(--brand-light)] text-white gap-2"
                 >
                   {downloading ? (

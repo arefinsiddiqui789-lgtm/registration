@@ -134,11 +134,19 @@ function generatePdfHtml(
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  html, body {
+    width: 794px;
+    height: 1123px;
+    overflow: hidden;
+  }
+
   body {
     font-family: Arial, Helvetica, sans-serif;
     color: #1e293b;
-    font-size: 13px;
-    line-height: 1.6;
+    font-size: 12px;
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     -webkit-font-smoothing: antialiased;
@@ -153,44 +161,45 @@ function generatePdfHtml(
   /* ── HEADER ────────────────────────────────────────── */
   .header-band {
     background: #0a1628;
-    padding: 24px 36px 18px;
+    padding: 18px 36px 14px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
   }
   .header-left {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
   }
   .logo-img {
-    width: 56px;
-    height: 56px;
-    border-radius: 10px;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
     object-fit: contain;
   }
   .brand-name {
-    font-size: 26px;
+    font-size: 24px;
     font-weight: bold;
     color: #ffffff;
     letter-spacing: -0.3px;
   }
   .brand-tagline {
-    font-size: 10px;
+    font-size: 9px;
     color: #94a3b8;
     letter-spacing: 3px;
     text-transform: uppercase;
-    margin-top: 2px;
+    margin-top: 1px;
   }
   .header-right { text-align: right; }
   .doc-label {
-    font-size: 9px;
+    font-size: 8px;
     color: #64748b;
     text-transform: uppercase;
     letter-spacing: 2px;
   }
   .doc-title-header {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: bold;
     color: #ffffff;
     letter-spacing: 0.5px;
@@ -200,10 +209,11 @@ function generatePdfHtml(
   /* ── SUB HEADER ────────────────────────────────────── */
   .sub-header {
     background: #131d35;
-    padding: 10px 36px;
+    padding: 8px 36px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
   }
   .tracking-chip {
     display: inline-flex;
@@ -211,18 +221,18 @@ function generatePdfHtml(
     gap: 8px;
     background: rgba(255,255,255,0.08);
     border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 6px;
-    padding: 5px 14px;
+    border-radius: 5px;
+    padding: 4px 12px;
   }
   .tracking-label {
-    font-size: 9px;
+    font-size: 8px;
     color: #94a3b8;
     text-transform: uppercase;
     letter-spacing: 1.5px;
     font-weight: bold;
   }
   .tracking-value {
-    font-size: 12px;
+    font-size: 11px;
     color: #e2e8f0;
     font-weight: bold;
     font-family: 'Courier New', Courier, monospace;
@@ -231,16 +241,16 @@ function generatePdfHtml(
   .qr-wrapper {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
   .qr-img {
-    width: 52px;
-    height: 52px;
+    width: 44px;
+    height: 44px;
     border-radius: 4px;
     border: 1px solid rgba(255,255,255,0.15);
   }
   .qr-label {
-    font-size: 8px;
+    font-size: 7px;
     color: #64748b;
     text-transform: uppercase;
     letter-spacing: 1.5px;
@@ -248,34 +258,37 @@ function generatePdfHtml(
 
   /* ── PAGE BODY ─────────────────────────────────────── */
   .page-body {
-    padding: 24px 36px 16px;
+    flex: 1;
+    padding: 16px 36px 12px;
+    display: flex;
+    flex-direction: column;
   }
 
   /* ── SECTION ───────────────────────────────────────── */
-  .section { margin-bottom: 18px; }
+  .section { margin-bottom: 12px; }
   .section-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-    padding-bottom: 6px;
-    border-bottom: 2.5px solid #0a1628;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #0a1628;
   }
   .section-icon {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     background: #0a1628;
-    border-radius: 5px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
+    font-size: 11px;
     color: #d4a843;
     font-weight: bold;
     flex-shrink: 0;
   }
   .section-title {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: bold;
     color: #0a1628;
     text-transform: uppercase;
@@ -286,12 +299,12 @@ function generatePdfHtml(
   .fields {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    border: 1.5px solid #cbd5e1;
-    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
     overflow: hidden;
   }
   .field {
-    padding: 10px 14px;
+    padding: 7px 12px;
     border-bottom: 1px solid #e2e8f0;
     border-right: 1px solid #e2e8f0;
   }
@@ -302,15 +315,15 @@ function generatePdfHtml(
     border-right: none;
   }
   .field-label {
-    font-size: 9.5px;
+    font-size: 8.5px;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     font-weight: bold;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
   }
   .field-value {
-    font-size: 13px;
+    font-size: 12px;
     color: #0f172a;
     font-weight: 600;
   }
@@ -322,17 +335,17 @@ function generatePdfHtml(
 
   /* ── SIGNATURE ─────────────────────────────────────── */
   .sig-section {
-    margin-top: 22px;
-    padding-top: 14px;
-    border-top: 2.5px solid #e2e8f0;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 2px solid #e2e8f0;
   }
   .sig-section-title {
-    font-size: 10px;
+    font-size: 9px;
     color: #64748b;
     text-transform: uppercase;
     letter-spacing: 1.5px;
     font-weight: bold;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
   .sig-row {
     display: flex;
@@ -341,71 +354,72 @@ function generatePdfHtml(
   }
   .sig-block { text-align: center; }
   .sig-image {
-    max-height: 55px;
-    max-width: 180px;
-    margin-bottom: 6px;
+    max-height: 48px;
+    max-width: 160px;
+    margin-bottom: 4px;
   }
   .sig-line {
-    width: 180px;
+    width: 160px;
     border-bottom: 1.5px solid #0a1628;
-    margin: 0 auto 4px;
+    margin: 0 auto 3px;
   }
   .sig-name {
-    font-size: 11px;
+    font-size: 10px;
     color: #0f172a;
     font-weight: bold;
   }
   .sig-label {
-    font-size: 9px;
+    font-size: 8px;
     color: #64748b;
     text-transform: uppercase;
     letter-spacing: 1px;
   }
   .date-block { text-align: right; }
   .date-value {
-    font-size: 13px;
+    font-size: 12px;
     color: #0f172a;
     font-weight: bold;
   }
   .date-sub {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 400;
     color: #475569;
   }
   .date-label {
-    font-size: 9px;
+    font-size: 8px;
     color: #64748b;
     text-transform: uppercase;
     letter-spacing: 1px;
-    margin-top: 4px;
+    margin-top: 2px;
   }
 
   /* ── DISCLAIMER ────────────────────────────────────── */
   .disclaimer {
-    margin-top: 18px;
-    padding: 10px 14px;
+    margin-top: 10px;
+    padding: 8px 12px;
     background: #f8fafc;
     border-left: 3px solid #0a1628;
     border-radius: 0 4px 4px 0;
+    flex-shrink: 0;
   }
   .disclaimer-text {
-    font-size: 9.5px;
+    font-size: 8.5px;
     color: #64748b;
-    line-height: 1.6;
+    line-height: 1.5;
   }
   .disclaimer-text strong { color: #475569; }
 
   /* ── FOOTER ────────────────────────────────────────── */
   .footer-band {
     background: #0a1628;
-    padding: 8px 36px;
+    padding: 7px 36px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 16px;
+    flex-shrink: 0;
   }
   .footer-left {
-    font-size: 9px;
+    font-size: 8px;
     color: #64748b;
   }
   .footer-left .footer-brand {
@@ -413,19 +427,19 @@ function generatePdfHtml(
     font-weight: bold;
   }
   .footer-right {
-    font-size: 9px;
+    font-size: 8px;
     color: #475569;
   }
   .footer-badge {
     display: inline-block;
     background: rgba(255,255,255,0.08);
     color: #94a3b8;
-    padding: 2px 8px;
+    padding: 1px 7px;
     border-radius: 3px;
-    font-size: 9px;
+    font-size: 8px;
     font-weight: bold;
     font-family: 'Courier New', Courier, monospace;
-    margin-left: 6px;
+    margin-left: 5px;
   }
 </style>
 </head>
@@ -554,7 +568,7 @@ function generatePdfHtml(
       <div class="sig-section-title">Applicant Declaration &amp; Signature</div>
       <div class="sig-row">
         <div class="sig-block">
-          ${sigSrc ? `<img class="sig-image" src="${sigSrc}" alt="Digital Signature" />` : '<div style="height: 55px;"></div>'}
+          ${sigSrc ? `<img class="sig-image" src="${sigSrc}" alt="Digital Signature" />` : '<div style="height: 48px;"></div>'}
           <div class="sig-line"></div>
           <div class="sig-name">${reg.firstName} ${reg.lastName}</div>
           <div class="sig-label">Applicant Signature</div>

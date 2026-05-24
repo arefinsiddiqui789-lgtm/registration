@@ -63,3 +63,29 @@ Stage Summary:
 - Registration API returns tracking ID (FMX-2026-XXXXX format)
 - PDF generation includes QR code with embedded data
 - Dark/light mode fully functional
+
+---
+Task ID: 12
+Agent: Main Agent
+Task: Fix document preview text clarity and ensure all content fits on 1 A4 page
+
+Work Log:
+- Rewrote PDF download in success-page.tsx from html2canvas rasterization to jsPDF direct vector drawing
+- Vector text produces perfectly sharp, crisp text at any zoom level or print resolution
+- Fixed jsPDF alpha/transparency issues (replaced RGBA values with solid simulated-transparent colors)
+- Added LOGO_BASE64 import for embedding logo directly in the PDF
+- Stored QR code data URL from API response for embedding in PDF
+- Updated HTML template (generate-pdf/route.ts) to fit on exactly 1 A4 page:
+  - Set html/body to fixed 794x1123px (A4 at 96dpi) with overflow:hidden
+  - Used flexbox layout with flex-shrink:0 on header/footer and flex:1 on page-body
+  - Reduced all padding, margins, font sizes, and field heights for compact layout
+  - Signature section uses margin-top:auto to push it down as needed
+  - Footer band always sticks to bottom of A4 page
+- Removed html2canvas-pro dependency from PDF generation flow (still installed but not used for download)
+- Print functionality still uses HTML-based approach (browser's native renderer = crisp text)
+
+Stage Summary:
+- PDF download now uses jsPDF vector text → perfectly sharp, clear, fresh text
+- All content fits on exactly 1 A4 page in both preview and PDF
+- HTML preview uses flexbox to keep footer at bottom of A4 page
+- No more blurry text from html2canvas rasterization
