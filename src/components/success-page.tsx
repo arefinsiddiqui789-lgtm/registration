@@ -26,7 +26,6 @@ export function SuccessPage() {
   const [downloading, setDownloading] = useState(false)
   const [emailContent, setEmailContent] = useState<string | null>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const renderContainerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (trackingId) {
@@ -34,27 +33,6 @@ export function SuccessPage() {
       fetchConfirmation()
     }
   }, [trackingId])
-
-  // Create a hidden render container for PDF generation
-  useEffect(() => {
-    if (!renderContainerRef.current) {
-      const container = document.createElement("div")
-      container.style.position = "fixed"
-      container.style.left = "-9999px"
-      container.style.top = "0"
-      container.style.width = "794px" // A4 width at 96dpi
-      container.style.background = "white"
-      container.style.zIndex = "-1"
-      document.body.appendChild(container)
-      renderContainerRef.current = container
-    }
-    return () => {
-      if (renderContainerRef.current) {
-        document.body.removeChild(renderContainerRef.current)
-        renderContainerRef.current = null
-      }
-    }
-  }, [])
 
   const generatePdf = async () => {
     setLoadingPdf(true)
@@ -69,7 +47,7 @@ export function SuccessPage() {
         setPdfHtml(result.html)
       }
     } catch (err) {
-      toast.error("Failed to generate PDF")
+      toast.error("Failed to generate document")
     } finally {
       setLoadingPdf(false)
     }
@@ -96,31 +74,51 @@ export function SuccessPage() {
     }
   }
 
-  const handlePrint = () => {
-    if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.focus()
-      iframeRef.current.contentWindow.print()
+  // Print using a new window for sharp text rendering
+  const handlePrint = useCallback(() => {
+    if (!pdfHtml) return
+    const printWindow = window.open("", "_blank", "width=800,height=1000")
+    if (!printWindow) {
+      toast.error("Please allow popups to print the document")
+      return
     }
-  }
+    printWindow.document.write(pdfHtml)
+    printWindow.document.close()
+    // Wait for content to render, then print
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print()
+      }, 500)
+    }
+  }, [pdfHtml])
 
+  // Download as crisp PDF using html2canvas at 4x + PNG lossless
   const handleDownloadPdf = useCallback(async () => {
-    if (!pdfHtml || !renderContainerRef.current) return
+    if (!pdfHtml) return
 
     setDownloading(true)
     toast.info("Generating PDF document...")
 
     try {
-      // Dynamically import libraries (client-side only)
       const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
         import("jspdf"),
         import("html2canvas-pro"),
       ])
 
-      const container = renderContainerRef.current
+      // Create a hidden render container
+      const container = document.createElement("div")
+      container.style.position = "fixed"
+      container.style.left = "-9999px"
+      container.style.top = "0"
+      container.style.width = "794px"
+      container.style.background = "white"
+      container.style.zIndex = "-1"
+      document.body.appendChild(container)
 
-      // Render the HTML content into the hidden container
+      // Render HTML into it
       container.innerHTML = pdfHtml
-      // Wait for images to load
+
+      // Wait for all images to load
       const images = container.querySelectorAll("img")
       await Promise.all(
         Array.from(images).map(
@@ -135,12 +133,12 @@ export function SuccessPage() {
         )
       )
 
-      // Small delay to ensure rendering completes
-      await new Promise((r) => setTimeout(r, 300))
+      // Extra render time
+      await new Promise((r) => setTimeout(r, 500))
 
-      // Capture the container as canvas
+      // Capture at 4x scale for super crisp text
       const canvas = await html2canvas(container, {
-        scale: 2, // Higher DPI for crisp output
+        scale: 4,
         useCORS: true,
         allowTaint: true,
         backgroundColor: "#ffffff",
@@ -148,11 +146,13 @@ export function SuccessPage() {
         logging: false,
       })
 
-      // A4 dimensions in mm
+      // Clean up render container
+      document.body.removeChild(container)
+
+      // A4 in mm
       const a4Width = 210
       const a4Height = 297
 
-      // Create PDF
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
@@ -161,42 +161,32 @@ export function SuccessPage() {
 
       const canvasWidth = canvas.width
       const canvasHeight = canvas.height
-
-      // Calculate the image dimensions to fit A4
       const imgWidth = a4Width
       const imgHeight = (canvasHeight * a4Width) / canvasWidth
 
-      const imgData = canvas.toDataURL("image/jpeg", 0.95)
+      // Use PNG for lossless text quality
+      const imgData = canvas.toDataURL("image/png")
 
-      // If the content fits on one page
       if (imgHeight <= a4Height) {
-        pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight)
+        pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight)
       } else {
-        // Multi-page handling
         let heightLeft = imgHeight
         let position = 0
-
-        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight)
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight)
         heightLeft -= a4Height
-
         while (heightLeft > 0) {
           position -= a4Height
           pdf.addPage()
-          pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight)
+          pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight)
           heightLeft -= a4Height
         }
       }
 
-      // Save the PDF
       pdf.save(`FrameMaxx-Registration-${trackingId}.pdf`)
-
-      // Clean up
-      container.innerHTML = ""
-
       toast.success("PDF downloaded successfully!")
     } catch (error) {
       console.error("PDF download error:", error)
-      toast.error("Failed to generate PDF. Try printing instead.")
+      toast.error("Failed to generate PDF. Try using Print instead.")
     } finally {
       setDownloading(false)
     }
@@ -372,7 +362,7 @@ export function SuccessPage() {
                     </Button>
                   </div>
                 </div>
-                {/* A4 Paper container with proper aspect ratio */}
+                {/* A4 Paper container */}
                 <div className="bg-slate-200 dark:bg-slate-800 rounded-xl p-4 sm:p-8 overflow-auto">
                   <div className="mx-auto shadow-2xl" style={{ maxWidth: "794px" }}>
                     <iframe

@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate QR code as base64
     const qrCodeDataUrl = await QRCode.toDataURL(
       JSON.stringify({
         trackingId: registration.trackingId,
@@ -36,16 +35,12 @@ export async function POST(request: NextRequest) {
         timestamp: registration.createdAt.toISOString(),
       }),
       {
-        width: 200,
+        width: 300,
         margin: 1,
-        color: {
-          dark: "#0a1628",
-          light: "#ffffff",
-        },
+        color: { dark: "#0a1628", light: "#ffffff" },
       }
     )
 
-    // Read the signature file if it's a path
     let sigSrc = registration.signatureData
     if (sigSrc.startsWith("/uploads/")) {
       try {
@@ -56,7 +51,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate HTML for PDF
     const html = generatePdfHtml(registration, qrCodeDataUrl, sigSrc)
 
     return NextResponse.json({
@@ -141,18 +135,25 @@ function generatePdfHtml(
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
     color: #1e293b;
-    font-size: 10.5pt;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.6;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
-  /* ── HEADER BAND ─────────────────────────────────── */
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+
+  /* ── HEADER ────────────────────────────────────────── */
   .header-band {
     background: #0a1628;
-    padding: 28px 40px 22px;
+    padding: 24px 36px 18px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -163,52 +164,43 @@ function generatePdfHtml(
     gap: 14px;
   }
   .logo-img {
-    width: 52px;
-    height: 52px;
+    width: 56px;
+    height: 56px;
     border-radius: 10px;
     object-fit: contain;
   }
-  .brand-text {
-    display: flex;
-    flex-direction: column;
-  }
   .brand-name {
-    font-size: 22pt;
-    font-weight: 700;
+    font-size: 26px;
+    font-weight: bold;
     color: #ffffff;
     letter-spacing: -0.3px;
-    line-height: 1.1;
   }
   .brand-tagline {
-    font-size: 8pt;
+    font-size: 10px;
     color: #94a3b8;
-    letter-spacing: 2.5px;
+    letter-spacing: 3px;
     text-transform: uppercase;
-    font-weight: 400;
     margin-top: 2px;
   }
-  .header-right {
-    text-align: right;
-  }
+  .header-right { text-align: right; }
   .doc-label {
-    font-size: 7pt;
+    font-size: 9px;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    font-weight: 500;
+    letter-spacing: 2px;
   }
   .doc-title-header {
-    font-size: 13pt;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: bold;
     color: #ffffff;
     letter-spacing: 0.5px;
     margin-top: 2px;
   }
 
-  /* ── SUB-HEADER BAR ──────────────────────────────── */
+  /* ── SUB HEADER ────────────────────────────────────── */
   .sub-header {
     background: #131d35;
-    padding: 10px 40px;
+    padding: 10px 36px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -216,118 +208,111 @@ function generatePdfHtml(
   .tracking-chip {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     background: rgba(255,255,255,0.08);
     border: 1px solid rgba(255,255,255,0.12);
     border-radius: 6px;
-    padding: 4px 12px;
+    padding: 5px 14px;
   }
   .tracking-label {
-    font-size: 7pt;
+    font-size: 9px;
     color: #94a3b8;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 500;
+    letter-spacing: 1.5px;
+    font-weight: bold;
   }
   .tracking-value {
-    font-size: 9pt;
+    font-size: 12px;
     color: #e2e8f0;
-    font-weight: 600;
-    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-family: 'Courier New', Courier, monospace;
     letter-spacing: 0.5px;
   }
   .qr-wrapper {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
   }
   .qr-img {
-    width: 56px;
-    height: 56px;
+    width: 52px;
+    height: 52px;
     border-radius: 4px;
     border: 1px solid rgba(255,255,255,0.15);
   }
   .qr-label {
-    font-size: 6.5pt;
+    font-size: 8px;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
   }
 
-  /* ── PAGE BODY ────────────────────────────────────── */
+  /* ── PAGE BODY ─────────────────────────────────────── */
   .page-body {
-    padding: 28px 40px 20px;
+    padding: 24px 36px 16px;
   }
 
-  /* ── SECTION ──────────────────────────────────────── */
-  .section {
-    margin-bottom: 20px;
-  }
+  /* ── SECTION ───────────────────────────────────────── */
+  .section { margin-bottom: 18px; }
   .section-header {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     padding-bottom: 6px;
-    border-bottom: 2px solid #0a1628;
+    border-bottom: 2.5px solid #0a1628;
   }
   .section-icon {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     background: #0a1628;
     border-radius: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10pt;
+    font-size: 12px;
     color: #d4a843;
-    font-weight: 700;
+    font-weight: bold;
     flex-shrink: 0;
   }
   .section-title {
-    font-size: 11pt;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: bold;
     color: #0a1628;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 1px;
   }
 
-  /* ── FIELD GRID ───────────────────────────────────── */
+  /* ── FIELD GRID ────────────────────────────────────── */
   .fields {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0;
-    border: 1px solid #e2e8f0;
+    border: 1.5px solid #cbd5e1;
     border-radius: 6px;
     overflow: hidden;
   }
   .field {
-    padding: 9px 14px;
-    border-bottom: 1px solid #f1f5f9;
-    border-right: 1px solid #f1f5f9;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
   }
-  .field:nth-child(2n) {
-    border-right: none;
-  }
-  .field:nth-last-child(-n+2) {
-    border-bottom: none;
-  }
+  .field:nth-child(2n) { border-right: none; }
+  .field:nth-last-child(-n+2) { border-bottom: none; }
   .field.full {
     grid-column: 1 / -1;
     border-right: none;
   }
   .field-label {
-    font-size: 7pt;
+    font-size: 9.5px;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
-    font-weight: 600;
-    margin-bottom: 2px;
+    letter-spacing: 1px;
+    font-weight: bold;
+    margin-bottom: 3px;
   }
   .field-value {
-    font-size: 10pt;
+    font-size: 13px;
     color: #0f172a;
-    font-weight: 500;
+    font-weight: 600;
   }
   .field-value.na {
     color: #94a3b8;
@@ -335,18 +320,18 @@ function generatePdfHtml(
     font-weight: 400;
   }
 
-  /* ── SIGNATURE SECTION ────────────────────────────── */
+  /* ── SIGNATURE ─────────────────────────────────────── */
   .sig-section {
-    margin-top: 24px;
-    padding-top: 16px;
-    border-top: 2px solid #e2e8f0;
+    margin-top: 22px;
+    padding-top: 14px;
+    border-top: 2.5px solid #e2e8f0;
   }
   .sig-section-title {
-    font-size: 8pt;
+    font-size: 10px;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 600;
+    letter-spacing: 1.5px;
+    font-weight: bold;
     margin-bottom: 12px;
   }
   .sig-row {
@@ -354,9 +339,7 @@ function generatePdfHtml(
     justify-content: space-between;
     align-items: flex-end;
   }
-  .sig-block {
-    text-align: center;
-  }
+  .sig-block { text-align: center; }
   .sig-image {
     max-height: 55px;
     max-width: 180px;
@@ -368,70 +351,69 @@ function generatePdfHtml(
     margin: 0 auto 4px;
   }
   .sig-name {
-    font-size: 8pt;
+    font-size: 11px;
     color: #0f172a;
-    font-weight: 600;
+    font-weight: bold;
   }
   .sig-label {
-    font-size: 7pt;
+    font-size: 9px;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 1px;
   }
-  .date-block {
-    text-align: right;
-  }
+  .date-block { text-align: right; }
   .date-value {
-    font-size: 10pt;
+    font-size: 13px;
     color: #0f172a;
-    font-weight: 600;
+    font-weight: bold;
+  }
+  .date-sub {
+    font-size: 11px;
+    font-weight: 400;
+    color: #475569;
   }
   .date-label {
-    font-size: 7pt;
+    font-size: 9px;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 1px;
+    margin-top: 4px;
   }
 
-  /* ── WATERMARK ────────────────────────────────────── */
-  .watermark {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-30deg);
-    font-size: 60pt;
-    font-weight: 800;
-    color: rgba(10, 22, 40, 0.03);
-    letter-spacing: 8px;
-    text-transform: uppercase;
-    pointer-events: none;
-    z-index: 0;
-    white-space: nowrap;
+  /* ── DISCLAIMER ────────────────────────────────────── */
+  .disclaimer {
+    margin-top: 18px;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border-left: 3px solid #0a1628;
+    border-radius: 0 4px 4px 0;
   }
+  .disclaimer-text {
+    font-size: 9.5px;
+    color: #64748b;
+    line-height: 1.6;
+  }
+  .disclaimer-text strong { color: #475569; }
 
-  /* ── FOOTER BAND ──────────────────────────────────── */
+  /* ── FOOTER ────────────────────────────────────────── */
   .footer-band {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
     background: #0a1628;
-    padding: 8px 40px;
+    padding: 8px 36px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-top: 16px;
   }
   .footer-left {
-    font-size: 7pt;
+    font-size: 9px;
     color: #64748b;
-    letter-spacing: 0.3px;
   }
   .footer-left .footer-brand {
     color: #94a3b8;
-    font-weight: 600;
+    font-weight: bold;
   }
   .footer-right {
-    font-size: 7pt;
+    font-size: 9px;
     color: #475569;
   }
   .footer-badge {
@@ -440,41 +422,20 @@ function generatePdfHtml(
     color: #94a3b8;
     padding: 2px 8px;
     border-radius: 3px;
-    font-size: 7pt;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    font-weight: bold;
+    font-family: 'Courier New', Courier, monospace;
     margin-left: 6px;
-  }
-
-  /* ── DISCLAIMER ───────────────────────────────────── */
-  .disclaimer {
-    margin-top: 20px;
-    padding: 10px 14px;
-    background: #f8fafc;
-    border-left: 3px solid #0a1628;
-    border-radius: 0 4px 4px 0;
-  }
-  .disclaimer-text {
-    font-size: 7.5pt;
-    color: #64748b;
-    line-height: 1.5;
-  }
-  .disclaimer-text strong {
-    color: #475569;
   }
 </style>
 </head>
 <body>
 
-  <!-- Watermark -->
-  <div class="watermark">FRAMEMAXX</div>
-
   <!-- Header Band -->
   <div class="header-band">
     <div class="header-left">
       <img class="logo-img" src="${LOGO_BASE64}" alt="FrameMaxx Logo" />
-      <div class="brand-text">
+      <div>
         <div class="brand-name">FrameMaxx</div>
         <div class="brand-tagline">Professional Agency</div>
       </div>
@@ -600,8 +561,8 @@ function generatePdfHtml(
         </div>
         <div class="date-block">
           <div class="date-value">${formatDate(reg.createdAt)}</div>
-          <div class="date-value" style="font-size: 9pt; font-weight: 400; color: #475569;">${formatTime(reg.createdAt)}</div>
-          <div class="date-label" style="margin-top: 6px;">Date &amp; Time of Submission</div>
+          <div class="date-sub">${formatTime(reg.createdAt)}</div>
+          <div class="date-label">Date &amp; Time of Submission</div>
         </div>
       </div>
     </div>
