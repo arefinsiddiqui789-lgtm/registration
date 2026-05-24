@@ -201,3 +201,27 @@ Stage Summary:
 - Email system is now Gmail-only (no more Ethereal fallback)
 - Success page shows clear instructions when Gmail address is missing
 - Once SMTP_USER is added, emails will be delivered to real Gmail inboxes
+---
+Task ID: 17
+Agent: Main Agent
+Task: Add WhatsApp notification for registration files (photo, CV, NID/passport)
+
+Work Log:
+- Created src/lib/whatsapp.ts with CallMeBot API integration
+- sendWhatsAppText() - sends text messages to WhatsApp
+- sendWhatsAppImage() - sends images to WhatsApp (via public URL)
+- sendRegistrationNotification() - sends full registration details + file links + photo image
+- Updated /api/register/route.ts to send WhatsApp notification after registration
+- Notification includes: name, email, phone, tracking ID, links to uploaded files (photo, CV, NID)
+- Profile photo also sent as WhatsApp image
+- WhatsApp sends in background (doesn't block registration)
+- Added WHATSAPP_PHONE=8801701659879 and WHATSAPP_APIKEY to .env
+- API key needs to be obtained by user (one-time setup with CallMeBot)
+
+Stage Summary:
+- WhatsApp notification system fully implemented
+- When someone registers, a message is sent to 01701659879 with:
+  - Registration details (name, email, phone, tracking ID)
+  - Links to download uploaded photo, CV, and NID/Passport
+  - Profile photo sent as WhatsApp image
+- Needs one-time CallMeBot activation to get API key

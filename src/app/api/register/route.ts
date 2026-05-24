@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { writeFileSync, mkdirSync, existsSync } from "fs"
 import { join } from "path"
 import { randomBytes } from "crypto"
+import { sendRegistrationNotification, isWhatsAppConfigured } from "@/lib/whatsapp"
 
 function generateTrackingId(): string {
   const year = new Date().getFullYear()
@@ -127,10 +128,31 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Send WhatsApp notification in background (don't block registration)
+    if (isWhatsAppConfigured()) {
+      const host = request.headers.get("host") || "localhost:3000"
+      sendRegistrationNotification({
+        firstName,
+        lastName,
+        email,
+        phone,
+        trackingId,
+        photoUrl: photoPath,
+        cvUrl: cvPath,
+        nidUrl: nidPassportPath,
+        host,
+      }).catch((err) => {
+        console.error("WhatsApp notification failed (non-critical):", err)
+      })
+    } else {
+      console.log("📱 WhatsApp not configured. Set WHATSAPP_PHONE and WHATSAPP_APIKEY in .env")
+    }
+
     return NextResponse.json({
       success: true,
       trackingId: registration.trackingId,
       id: registration.id,
+      whatsappNotified: isWhatsAppConfigured(),
     })
   } catch (error) {
     console.error("Registration error:", error)
