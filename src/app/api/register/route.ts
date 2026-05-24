@@ -88,16 +88,25 @@ export async function POST(request: NextRequest) {
     if (photoBase64) {
       photoBuffer = Buffer.from(photoBase64.split(",")[1] || photoBase64, "base64")
       photoExt = getExtFromBase64(photoBase64)
+      console.log(`📸 Photo buffer: ${(photoBuffer.length / 1024).toFixed(1)} KB, ext: ${photoExt}`)
+    } else {
+      console.log("📸 No photo uploaded")
     }
 
     if (cvBase64) {
       cvBuffer = Buffer.from(cvBase64.split(",")[1] || cvBase64, "base64")
       cvExt = getExtFromBase64(cvBase64)
+      console.log(`📄 CV buffer: ${(cvBuffer.length / 1024).toFixed(1)} KB, ext: ${cvExt}`)
+    } else {
+      console.log("📄 No CV uploaded")
     }
 
     if (nidPassportBase64) {
       nidBuffer = Buffer.from(nidPassportBase64.split(",")[1] || nidPassportBase64, "base64")
       nidExt = getExtFromBase64(nidPassportBase64)
+      console.log(`🪪 NID buffer: ${(nidBuffer.length / 1024).toFixed(1)} KB, ext: ${nidExt}`)
+    } else {
+      console.log("🪪 No NID/Passport uploaded")
     }
 
     // Signature buffer

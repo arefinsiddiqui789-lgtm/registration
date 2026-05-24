@@ -2,7 +2,7 @@
  * Telegram Bot Notification
  *
  * Sends registration details + files (photo, CV, NID, PDF) directly to your Telegram
- * using multipart/form-data file uploads via Buffer — works on both local and Vercel!
+ * Uses multipart/form-data with proper Buffer handling — works on both local and Vercel!
  */
 
 export function isTelegramConfigured(): boolean {
@@ -22,6 +22,67 @@ function getChatId(): string {
 export interface TelegramResult {
   success: boolean
   message: string
+}
+
+// Build multipart/form-data body manually for maximum compatibility
+function buildMultipartBody(fields: { name: string; value: string | Buffer; filename?: string; contentType?: string }[]): { body: Uint8Array; contentType: string } {
+  const boundary = "----FormBoundary" + Math.random().toString(36).substring(2)
+  const parts: Uint8Array[] = []
+  const encoder = new TextEncoder()
+
+  for (const field of fields) {
+    // Add boundary
+    parts.push(encoder.encode(`--${boundary}\r\n`))
+
+    if (field.value instanceof Buffer || field.value instanceof Uint8Array) {
+      // Binary field
+      const filename = field.filename || "file"
+      const contentType = field.contentType || "application/octet-stream"
+      parts.push(encoder.encode(
+        `Content-Disposition: form-data; name="${field.name}"; filename="${filename}"\r\n` +
+        `Content-Type: ${contentType}\r\n\r\n`
+      ))
+      parts.push(new Uint8Array(field.value))
+      parts.push(encoder.encode("\r\n"))
+    } else {
+      // Text field
+      parts.push(encoder.encode(
+        `Content-Disposition: form-data; name="${field.name}"\r\n\r\n` +
+        `${field.value}\r\n`
+      ))
+    }
+  }
+
+  // Final boundary
+  parts.push(encoder.encode(`--${boundary}--\r\n`))
+
+  // Combine all parts
+  const totalLength = parts.reduce((sum, part) => sum + part.length, 0)
+  const body = new Uint8Array(totalLength)
+  let offset = 0
+  for (const part of parts) {
+    body.set(part, offset)
+    offset += part.length
+  }
+
+  return {
+    body,
+    contentType: `multipart/form-data; boundary=${boundary}`,
+  }
+}
+
+// Get MIME type from file extension
+function getMimeType(ext: string): string {
+  const mimeMap: Record<string, string> = {
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    webp: "image/webp",
+    pdf: "application/pdf",
+    gif: "image/gif",
+    bin: "application/octet-stream",
+  }
+  return mimeMap[ext.toLowerCase()] || "application/octet-stream"
 }
 
 // Send a text message
@@ -70,23 +131,26 @@ export async function sendTelegramPhotoBuffer(
   }
 
   try {
-    const formData = new FormData()
-    formData.append("chat_id", getChatId())
-    formData.append("photo", new Blob([buffer]), filename)
-    formData.append("caption", caption)
-    formData.append("parse_mode", "Markdown")
+    const ext = filename.split(".").pop() || "png"
+    const { body, contentType } = buildMultipartBody([
+      { name: "chat_id", value: getChatId() },
+      { name: "photo", value: buffer, filename, contentType: getMimeType(ext) },
+      { name: "caption", value: caption },
+      { name: "parse_mode", value: "Markdown" },
+    ])
 
     const url = `https://api.telegram.org/bot${getBotToken()}/sendPhoto`
     const response = await fetch(url, {
       method: "POST",
-      body: formData,
-      signal: AbortSignal.timeout(30000),
+      headers: { "Content-Type": contentType },
+      body,
+      signal: AbortSignal.timeout(60000), // 60s for large files
     })
 
     const data = await response.json()
 
     if (data.ok) {
-      console.log("📱 Telegram photo sent as image")
+      console.log("📱 Telegram photo sent as image:", filename)
       return { success: true, message: "Telegram photo sent" }
     } else {
       console.error("Telegram photo error:", data.description)
@@ -110,23 +174,26 @@ export async function sendTelegramDocumentBuffer(
   }
 
   try {
-    const formData = new FormData()
-    formData.append("chat_id", getChatId())
-    formData.append("document", new Blob([buffer]), filename)
-    formData.append("caption", caption)
-    formData.append("parse_mode", "Markdown")
+    const ext = filename.split(".").pop() || "pdf"
+    const { body, contentType } = buildMultipartBody([
+      { name: "chat_id", value: getChatId() },
+      { name: "document", value: buffer, filename, contentType: getMimeType(ext) },
+      { name: "caption", value: caption },
+      { name: "parse_mode", value: "Markdown" },
+    ])
 
     const url = `https://api.telegram.org/bot${getBotToken()}/sendDocument`
     const response = await fetch(url, {
       method: "POST",
-      body: formData,
-      signal: AbortSignal.timeout(30000),
+      headers: { "Content-Type": contentType },
+      body,
+      signal: AbortSignal.timeout(60000), // 60s for large files
     })
 
     const data = await response.json()
 
     if (data.ok) {
-      console.log("📱 Telegram document sent")
+      console.log("📱 Telegram document sent:", filename)
       return { success: true, message: "Telegram document sent" }
     } else {
       console.error("Telegram document error:", data.description)
@@ -202,46 +269,50 @@ ${uploadsInfo.length > 0 ? uploadsInfo.join("\n") : "No files uploaded"}
 
   // 2. Send the Registration PDF (most important)
   if (pdfBuffer) {
+    console.log(`📱 Sending PDF to Telegram (${(pdfBuffer.length / 1024).toFixed(1)} KB)...`)
     await sendTelegramDocumentBuffer(
       pdfBuffer,
       `${trackingId}-registration.pdf`,
       `📑 ${firstName} ${lastName} - Registration Certificate\n🏷️ ${trackingId}`
-    ).catch(() => {})
+    ).catch((err) => console.error("PDF send error:", err))
   }
 
   // 3. Send photo as image
   if (photoBuffer) {
+    console.log(`📱 Sending photo to Telegram (${(photoBuffer.length / 1024).toFixed(1)} KB, ${photoExt})...`)
     await sendTelegramPhotoBuffer(
       photoBuffer,
       `${trackingId}-photo.${photoExt}`,
       `📸 ${firstName} ${lastName} - Profile Photo\n🏷️ ${trackingId}`
-    ).catch(() => {})
+    ).catch((err) => console.error("Photo send error:", err))
   }
 
   // 4. Send CV as document
   if (cvBuffer) {
+    console.log(`📱 Sending CV to Telegram (${(cvBuffer.length / 1024).toFixed(1)} KB, ${cvExt})...`)
     await sendTelegramDocumentBuffer(
       cvBuffer,
       `${trackingId}-cv.${cvExt}`,
       `📄 ${firstName} ${lastName} - CV\n🏷️ ${trackingId}`
-    ).catch(() => {})
+    ).catch((err) => console.error("CV send error:", err))
   }
 
   // 5. Send NID/Passport
   if (nidBuffer) {
-    const isImage = ["png", "jpg", "jpeg", "webp"].includes(nidExt)
+    const isImage = ["png", "jpg", "jpeg", "webp"].includes(nidExt.toLowerCase())
+    console.log(`📱 Sending NID/Passport to Telegram (${(nidBuffer.length / 1024).toFixed(1)} KB, ${nidExt})...`)
     if (isImage) {
       await sendTelegramPhotoBuffer(
         nidBuffer,
         `${trackingId}-nid-passport.${nidExt}`,
         `🪪 ${firstName} ${lastName} - NID/Passport\n🏷️ ${trackingId}`
-      ).catch(() => {})
+      ).catch((err) => console.error("NID send error:", err))
     } else {
       await sendTelegramDocumentBuffer(
         nidBuffer,
         `${trackingId}-nid-passport.${nidExt}`,
         `🪪 ${firstName} ${lastName} - NID/Passport\n🏷️ ${trackingId}`
-      ).catch(() => {})
+      ).catch((err) => console.error("NID send error:", err))
     }
   }
 
