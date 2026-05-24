@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { motion } from "framer-motion"
 import {
-  CheckCircle2,
   Download,
   Printer,
   Copy,
@@ -562,12 +561,43 @@ export function SuccessPage() {
           <Card className="glass border-border/50 shadow-xl mb-8">
             <CardContent className="p-6 sm:p-8 text-center">
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6"
+                initial={{ scale: 0, rotate: -20 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{
+                  delay: 0.3,
+                  type: "spring",
+                  stiffness: 180,
+                  damping: 12,
+                  mass: 0.8,
+                }}
+                className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6 relative"
               >
-                <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.5, duration: 0.3, ease: "easeOut" }}
+                  className="absolute inset-0 rounded-full bg-green-400/20 dark:bg-green-500/10"
+                />
+                <motion.div
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 1 }}
+                  transition={{ delay: 0.6, duration: 0.5, ease: "easeOut" }}
+                >
+                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                    <circle cx="20" cy="20" r="18" stroke="currentColor" strokeWidth="2.5" className="text-green-600 dark:text-green-400" opacity="0.3" />
+                    <motion.path
+                      d="M12 20.5L17.5 26L28 15"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-green-600 dark:text-green-400"
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ delay: 0.6, duration: 0.45, ease: "easeOut" }}
+                    />
+                  </svg>
+                </motion.div>
               </motion.div>
 
               <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
