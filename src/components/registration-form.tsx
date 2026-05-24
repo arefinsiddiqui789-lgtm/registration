@@ -8,7 +8,6 @@ import { ProfessionalInfoStep } from "@/components/form-steps/professional-info"
 import { DocumentUploadStep } from "@/components/form-steps/document-upload"
 import { AgreementSignatureStep } from "@/components/form-steps/agreement-signature"
 import { ReviewSubmitStep } from "@/components/form-steps/review-submit"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import Image from "next/image"
@@ -177,7 +176,6 @@ export function RegistrationForm({ onBack }: RegistrationFormProps) {
               </p>
             </div>
           </div>
-          <ThemeToggle />
         </div>
       </header>
 
