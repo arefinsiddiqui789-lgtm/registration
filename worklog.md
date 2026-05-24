@@ -267,3 +267,23 @@ Stage Summary:
 - When someone registers, a PDF certificate is auto-generated on the server
 - PDF is sent to Telegram along with photo, CV, and NID/Passport
 - Complete flow: Register → Save DB → Generate PDF → Send all to Telegram + Email
+---
+Task ID: 20
+Agent: Main Agent
+Task: Make app Vercel-compatible and fix internal server error
+
+Work Log:
+- Identified that SQLite doesn't work on Vercel (read-only filesystem)
+- Rewrote telegram.ts to support Buffer-based file sending (works on Vercel without filesystem)
+- Added sendTelegramPhotoBuffer() and sendTelegramDocumentBuffer() functions
+- Updated register/route.ts to detect Vercel environment and skip filesystem operations
+- Files are now sent to Telegram via Buffer (memory) instead of file paths
+- PDF generator returns Buffer instead of writing to file
+- Database save wrapped in try/catch so registration continues even if DB fails
+- Pushed updated code to GitHub
+- Still need to set up cloud database (Neon PostgreSQL) for Vercel
+
+Stage Summary:
+- App now works on Vercel for: Telegram notifications, email sending, PDF generation
+- SQLite database works locally but needs Neon PostgreSQL for Vercel
+- User needs to: 1) Create Neon DB, 2) Add DATABASE_URL env var in Vercel
