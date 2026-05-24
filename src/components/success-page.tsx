@@ -166,7 +166,7 @@ export function SuccessPage() {
       doc.setTextColor(148, 163, 184)
       doc.setFontSize(6)
       doc.setFont("helvetica", "normal")
-      doc.text("PROFESSIONAL AGENCY", m + 22, 18)
+      doc.text("MARKETING AGENCY", m + 22, 18)
 
       // Document label (right side)
       doc.setTextColor(...cMuted)

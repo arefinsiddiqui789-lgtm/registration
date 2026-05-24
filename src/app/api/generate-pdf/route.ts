@@ -425,7 +425,7 @@ function generatePdfHtml(
       <img class="logo-img" src="${LOGO_BASE64}" alt="FrameMaxx Logo" />
       <div>
         <div class="brand-name">FrameMaxx</div>
-        <div class="brand-tagline">Professional Agency</div>
+        <div class="brand-tagline">Marketing Agency</div>
       </div>
     </div>
     <div class="header-right">

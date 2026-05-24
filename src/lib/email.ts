@@ -151,7 +151,7 @@ export function generateConfirmationEmailHtml({
           <tr>
             <td style="background-color: #0a1628; border-radius: 12px 12px 0 0; padding: 30px 40px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; letter-spacing: 1px;">FrameMaxx</h1>
-              <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 11px; letter-spacing: 3px; text-transform: uppercase;">Professional Agency</p>
+              <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 11px; letter-spacing: 3px; text-transform: uppercase;">Marketing Agency</p>
             </td>
           </tr>
 

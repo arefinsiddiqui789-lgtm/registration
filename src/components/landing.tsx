@@ -203,7 +203,7 @@ export function LandingPage({ onStartRegistration }: LandingPageProps) {
                                   FrameMaxx
                                 </div>
                                 <div className="text-[8px] text-slate-500">
-                                  Professional Agency
+                                  Marketing Agency
                                 </div>
                               </div>
                             </div>
