@@ -12,9 +12,10 @@ import {
   ArrowLeft,
   Loader2,
   Mail,
+  FileText,
 } from "lucide-react"
 import { toast } from "sonner"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import Image from "next/image"
 
@@ -22,8 +23,10 @@ export function SuccessPage() {
   const { trackingId, data, isSubmitted } = useRegistrationStore()
   const [pdfHtml, setPdfHtml] = useState<string | null>(null)
   const [loadingPdf, setLoadingPdf] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [emailContent, setEmailContent] = useState<string | null>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const renderContainerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (trackingId) {
@@ -31,6 +34,27 @@ export function SuccessPage() {
       fetchConfirmation()
     }
   }, [trackingId])
+
+  // Create a hidden render container for PDF generation
+  useEffect(() => {
+    if (!renderContainerRef.current) {
+      const container = document.createElement("div")
+      container.style.position = "fixed"
+      container.style.left = "-9999px"
+      container.style.top = "0"
+      container.style.width = "794px" // A4 width at 96dpi
+      container.style.background = "white"
+      container.style.zIndex = "-1"
+      document.body.appendChild(container)
+      renderContainerRef.current = container
+    }
+    return () => {
+      if (renderContainerRef.current) {
+        document.body.removeChild(renderContainerRef.current)
+        renderContainerRef.current = null
+      }
+    }
+  }, [])
 
   const generatePdf = async () => {
     setLoadingPdf(true)
@@ -79,20 +103,104 @@ export function SuccessPage() {
     }
   }
 
-  const handleDownload = () => {
-    if (!pdfHtml) return
+  const handleDownloadPdf = useCallback(async () => {
+    if (!pdfHtml || !renderContainerRef.current) return
 
-    const blob = new Blob([pdfHtml], { type: "text/html" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `FrameMaxx-Registration-${trackingId}.html`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    toast.success("Document downloaded!")
-  }
+    setDownloading(true)
+    toast.info("Generating PDF document...")
+
+    try {
+      // Dynamically import libraries (client-side only)
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas-pro"),
+      ])
+
+      const container = renderContainerRef.current
+
+      // Render the HTML content into the hidden container
+      container.innerHTML = pdfHtml
+      // Wait for images to load
+      const images = container.querySelectorAll("img")
+      await Promise.all(
+        Array.from(images).map(
+          (img) =>
+            new Promise<void>((resolve) => {
+              if (img.complete) resolve()
+              else {
+                img.onload = () => resolve()
+                img.onerror = () => resolve()
+              }
+            })
+        )
+      )
+
+      // Small delay to ensure rendering completes
+      await new Promise((r) => setTimeout(r, 300))
+
+      // Capture the container as canvas
+      const canvas = await html2canvas(container, {
+        scale: 2, // Higher DPI for crisp output
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        width: 794,
+        logging: false,
+      })
+
+      // A4 dimensions in mm
+      const a4Width = 210
+      const a4Height = 297
+
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      })
+
+      const canvasWidth = canvas.width
+      const canvasHeight = canvas.height
+
+      // Calculate the image dimensions to fit A4
+      const imgWidth = a4Width
+      const imgHeight = (canvasHeight * a4Width) / canvasWidth
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.95)
+
+      // If the content fits on one page
+      if (imgHeight <= a4Height) {
+        pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight)
+      } else {
+        // Multi-page handling
+        let heightLeft = imgHeight
+        let position = 0
+
+        pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight)
+        heightLeft -= a4Height
+
+        while (heightLeft > 0) {
+          position -= a4Height
+          pdf.addPage()
+          pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight)
+          heightLeft -= a4Height
+        }
+      }
+
+      // Save the PDF
+      pdf.save(`FrameMaxx-Registration-${trackingId}.pdf`)
+
+      // Clean up
+      container.innerHTML = ""
+
+      toast.success("PDF downloaded successfully!")
+    } catch (error) {
+      console.error("PDF download error:", error)
+      toast.error("Failed to generate PDF. Try printing instead.")
+    } finally {
+      setDownloading(false)
+    }
+  }, [pdfHtml, trackingId])
 
   const copyTrackingId = () => {
     if (trackingId) {
@@ -178,16 +286,16 @@ export function SuccessPage() {
               {/* Action buttons */}
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button
-                  onClick={handleDownload}
-                  disabled={loadingPdf || !pdfHtml}
+                  onClick={handleDownloadPdf}
+                  disabled={loadingPdf || !pdfHtml || downloading}
                   className="bg-[var(--brand)] hover:bg-[var(--brand-light)] text-white gap-2"
                 >
-                  {loadingPdf ? (
+                  {downloading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Download className="h-4 w-4" />
+                    <FileText className="h-4 w-4" />
                   )}
-                  Download Document
+                  {downloading ? "Generating PDF..." : "Download PDF"}
                 </Button>
                 <Button
                   variant="outline"
@@ -244,9 +352,25 @@ export function SuccessPage() {
                   <h3 className="font-semibold text-foreground">
                     Document Preview
                   </h3>
-                  <span className="text-xs text-muted-foreground">
-                    A4 Format &bull; 210 &times; 297 mm
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground">
+                      A4 Format &bull; 210 &times; 297 mm
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleDownloadPdf}
+                      disabled={downloading}
+                      className="gap-1.5 h-8 text-xs"
+                    >
+                      {downloading ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Download className="h-3 w-3" />
+                      )}
+                      PDF
+                    </Button>
+                  </div>
                 </div>
                 {/* A4 Paper container with proper aspect ratio */}
                 <div className="bg-slate-200 dark:bg-slate-800 rounded-xl p-4 sm:p-8 overflow-auto">
