@@ -12,6 +12,8 @@ import {
   Loader2,
   Mail,
   FileText,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -24,6 +26,8 @@ export function SuccessPage() {
   const [loadingPdf, setLoadingPdf] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [emailContent, setEmailContent] = useState<string | null>(null)
+  const [emailSent, setEmailSent] = useState(false)
+  const [emailSending, setEmailSending] = useState(true)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
@@ -53,6 +57,7 @@ export function SuccessPage() {
   }
 
   const fetchConfirmation = async () => {
+    setEmailSending(true)
     try {
       const response = await fetch("/api/send-confirmation", {
         method: "POST",
@@ -67,9 +72,15 @@ export function SuccessPage() {
       const result = await response.json()
       if (result.success) {
         setEmailContent(result.emailContent)
+        setEmailSent(result.emailSent)
+        if (result.emailSent) {
+          toast.success("Confirmation email sent to " + data.email)
+        }
       }
     } catch {
       // Non-critical
+    } finally {
+      setEmailSending(false)
     }
   }
 
@@ -650,33 +661,85 @@ export function SuccessPage() {
           </Card>
         </motion.div>
 
-        {/* Email confirmation preview */}
-        {emailContent && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mb-8"
-          >
-            <Card className="border-amber-200/60 shadow-lg" style={{ backgroundColor: "#f5e6b8" }}>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Mail className="h-5 w-5 text-[var(--brand)]" />
-                  <h3 className="font-semibold text-foreground">
-                    Confirmation Email
-                  </h3>
+        {/* Email notification status */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mb-8"
+        >
+          <Card className="border-amber-200/60 shadow-lg" style={{ backgroundColor: "#f5e6b8" }}>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Mail className="h-5 w-5 text-[var(--brand)]" />
+                <h3 className="font-semibold text-foreground">
+                  Email Notification
+                </h3>
+              </div>
+              {emailSending ? (
+                <div className="flex items-center gap-3 py-2">
+                  <Loader2 className="h-5 w-5 animate-spin text-[var(--brand)]" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      Sending confirmation email...
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      to {data.email}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mb-3">
-                  A confirmation email has been sent to{" "}
-                  <strong>{data.email}</strong>
-                </p>
-                <div className="bg-white/70 rounded-lg p-4 border border-amber-200/50 text-sm text-foreground/80 whitespace-pre-line">
-                  {emailContent}
+              ) : emailSent ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 py-1">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <div>
+                      <p className="text-sm font-medium text-green-700">
+                        Confirmation email sent successfully!
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        to <strong>{data.email}</strong>
+                      </p>
+                    </div>
+                  </div>
+                  {emailContent && (
+                    <details className="group">
+                      <summary className="text-xs text-[var(--brand)] cursor-pointer hover:underline font-medium">
+                        View email content
+                      </summary>
+                      <div className="mt-2 bg-white/70 rounded-lg p-4 border border-amber-200/50 text-sm text-foreground/80 whitespace-pre-line">
+                        {emailContent}
+                      </div>
+                    </details>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 py-1">
+                    <AlertCircle className="h-5 w-5 text-amber-500" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-700">
+                        Email pending delivery
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Confirmation for <strong>{data.email}</strong> will be sent once email service is configured.
+                      </p>
+                    </div>
+                  </div>
+                  {emailContent && (
+                    <details className="group">
+                      <summary className="text-xs text-[var(--brand)] cursor-pointer hover:underline font-medium">
+                        View email preview
+                      </summary>
+                      <div className="mt-2 bg-white/70 rounded-lg p-4 border border-amber-200/50 text-sm text-foreground/80 whitespace-pre-line">
+                        {emailContent}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* PDF Preview - A4 Paper Style */}
         {pdfHtml && (

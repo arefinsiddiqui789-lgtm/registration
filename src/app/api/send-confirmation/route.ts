@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import ZAI from "z-ai-web-dev-sdk"
+import {
+  sendEmail,
+  isSmtpConfigured,
+  generateConfirmationEmailHtml,
+  generateConfirmationEmailText,
+} from "@/lib/email"
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,10 +43,44 @@ Keep it concise and professional.`,
 
     const emailContent = response.choices[0]?.message?.content || ""
 
+    // Generate HTML and text versions of the email
+    const htmlContent = generateConfirmationEmailHtml({
+      firstName,
+      lastName,
+      trackingId,
+      emailContent,
+    })
+
+    const textContent = generateConfirmationEmailText({
+      firstName,
+      lastName,
+      trackingId,
+      emailContent,
+    })
+
+    // Attempt to send the email
+    let emailSent = false
+    let emailMessage = ""
+
+    if (isSmtpConfigured()) {
+      const result = await sendEmail({
+        to: email,
+        subject: `FrameMaxx Registration Confirmation - ${trackingId}`,
+        text: textContent,
+        html: htmlContent,
+      })
+      emailSent = result.success
+      emailMessage = result.message || ""
+    } else {
+      emailMessage = "SMTP not configured"
+    }
+
     return NextResponse.json({
       success: true,
       emailContent,
       trackingId,
+      emailSent,
+      emailMessage,
     })
   } catch (error) {
     console.error("Email confirmation error:", error)

@@ -145,3 +145,37 @@ Stage Summary:
 - All values and labels are properly truncated with "..." if they exceed cell width
 - Layout is more compact while still professional and readable
 - Content fits on 1 A4 page with boundary checks preventing footer overlap
+
+---
+Task ID: 15
+Agent: Main Agent
+Task: Add Gmail notification when registration form is submitted
+
+Work Log:
+- Installed nodemailer and @types/nodemailer packages
+- Created src/lib/email.ts with:
+  - SMTP transporter using Gmail SMTP (smtp.gmail.com:587)
+  - sendEmail() function for sending emails via nodemailer
+  - isSmtpConfigured() to check if SMTP credentials are set
+  - generateConfirmationEmailHtml() - beautiful branded HTML email template with FrameMaxx styling, tracking ID banner, and professional layout
+  - generateConfirmationEmailText() - plain text fallback version
+- Updated /api/send-confirmation/route.ts:
+  - Now generates both HTML and text email content using LLM
+  - Actually sends the email via nodemailer if SMTP is configured
+  - Returns emailSent status in the response
+- Updated success-page.tsx UI:
+  - Added emailSending, emailSent state tracking
+  - Shows 3 states: sending (spinner), sent successfully (green checkmark), pending (amber alert)
+  - Email content shown in collapsible <details> element
+  - Toast notification when email is sent successfully
+  - Clear visual feedback for each email status
+- Added SMTP environment variables to .env:
+  - SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM_NAME
+  - Added detailed comments on how to set up Gmail App Password
+
+Stage Summary:
+- Email notification system fully implemented with nodemailer + Gmail SMTP
+- Beautiful HTML email template with FrameMaxx branding
+- UI shows real-time email sending status with 3 states
+- Graceful fallback when SMTP not configured (shows "pending delivery")
+- To activate: set SMTP_USER and SMTP_PASS in .env with Gmail App Password
