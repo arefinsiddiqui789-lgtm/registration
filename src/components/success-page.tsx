@@ -46,7 +46,34 @@ export function SuccessPage() {
       const response = await fetch("/api/generate-pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trackingId }),
+        body: JSON.stringify({
+          trackingId,
+          // Send registration data so API doesn't need database (works on Vercel)
+          registrationData: {
+            trackingId,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            dateOfBirth: data.dateOfBirth,
+            gender: data.gender,
+            nationality: data.nationality,
+            nidPassportType: data.nidPassportType,
+            nidPassportNumber: data.nidPassportNumber,
+            email: data.email,
+            phone: data.phone,
+            address: data.address,
+            city: data.city,
+            state: data.state,
+            postalCode: data.postalCode,
+            country: data.country,
+            occupation: data.occupation,
+            company: data.company,
+            experience: data.experience,
+            skills: data.skills,
+            department: data.department,
+            signatureData: data.signatureData || "",
+            createdAt: new Date().toISOString(),
+          },
+        }),
       })
       const result = await response.json()
       if (result.success) {

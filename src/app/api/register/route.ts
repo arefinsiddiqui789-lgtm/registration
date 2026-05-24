@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { db } from "@/lib/db"
-import { writeFileSync, mkdirSync, existsSync } from "fs"
-import { join } from "path"
+import { safeDb } from "@/lib/db"
 import { randomBytes } from "crypto"
-import { sendRegistrationNotification, isTelegramConfigured, sendTelegramPhotoBuffer, sendTelegramDocumentBuffer } from "@/lib/telegram"
+import { sendRegistrationNotification, isTelegramConfigured } from "@/lib/telegram"
 import { generateRegistrationPdfBuffer } from "@/lib/generate-pdf"
 
 function generateTrackingId(): string {
@@ -79,13 +77,7 @@ export async function POST(request: NextRequest) {
 
     const trackingId = generateTrackingId()
 
-    // Save uploaded files (only on local dev, not Vercel)
-    const uploadsDir = join(process.cwd(), "public", "uploads")
-    let photoPath: string | null = null
-    let cvPath: string | null = null
-    let nidPassportPath: string | null = null
-
-    // Extract buffers for Telegram sending
+    // Extract buffers for Telegram sending (works on both Vercel and local)
     let photoBuffer: Buffer | null = null
     let cvBuffer: Buffer | null = null
     let nidBuffer: Buffer | null = null
@@ -96,46 +88,24 @@ export async function POST(request: NextRequest) {
     if (photoBase64) {
       photoBuffer = Buffer.from(photoBase64.split(",")[1] || photoBase64, "base64")
       photoExt = getExtFromBase64(photoBase64)
-      if (!isVercel()) {
-        if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true })
-        const filename = `${trackingId}-photo.${photoExt}`
-        writeFileSync(join(uploadsDir, filename), photoBuffer)
-        photoPath = `/uploads/${filename}`
-      }
     }
 
     if (cvBase64) {
       cvBuffer = Buffer.from(cvBase64.split(",")[1] || cvBase64, "base64")
       cvExt = getExtFromBase64(cvBase64)
-      if (!isVercel()) {
-        const filename = `${trackingId}-cv.${cvExt}`
-        writeFileSync(join(uploadsDir, filename), cvBuffer)
-        cvPath = `/uploads/${filename}`
-      }
     }
 
     if (nidPassportBase64) {
       nidBuffer = Buffer.from(nidPassportBase64.split(",")[1] || nidPassportBase64, "base64")
       nidExt = getExtFromBase64(nidPassportBase64)
-      if (!isVercel()) {
-        const filename = `${trackingId}-nid-passport.${nidExt}`
-        writeFileSync(join(uploadsDir, filename), nidBuffer)
-        nidPassportPath = `/uploads/${filename}`
-      }
     }
 
-    // Save signature
+    // Signature buffer
     const sigBuffer = Buffer.from(signatureData.split(",")[1] || signatureData, "base64")
-    let sigPath = ""
-    if (!isVercel()) {
-      const sigFilename = `${trackingId}-signature.png`
-      writeFileSync(join(uploadsDir, sigFilename), sigBuffer)
-      sigPath = `/uploads/${sigFilename}`
-    }
 
-    // Save to database
-    try {
-      await db.registration.create({
+    // Save to database (gracefully handles failure on Vercel)
+    await safeDb(async (database) => {
+      await database.registration.create({
         data: {
           trackingId,
           firstName,
@@ -157,20 +127,41 @@ export async function POST(request: NextRequest) {
           experience: experience || "",
           skills: skills || "",
           department: department || "",
-          photoPath,
-          cvPath,
-          nidPassportPath,
-          signatureData: sigPath || signatureData.substring(0, 100),
+          photoPath: null,
+          cvPath: null,
+          nidPassportPath: null,
+          signatureData: signatureData.substring(0, 100),
           agreeToTerms,
           agreeToPrivacy,
         },
       })
-    } catch (dbError) {
-      console.error("Database save failed:", dbError)
-      // Continue even if DB fails - Telegram & email are more important
+    })
+
+    // Save files locally (only in development, not on Vercel)
+    if (!isVercel()) {
+      try {
+        const { writeFileSync, mkdirSync, existsSync } = await import("fs")
+        const { join } = await import("path")
+        const uploadsDir = join(process.cwd(), "public", "uploads")
+
+        if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true })
+
+        if (photoBuffer) {
+          writeFileSync(join(uploadsDir, `${trackingId}-photo.${photoExt}`), photoBuffer)
+        }
+        if (cvBuffer) {
+          writeFileSync(join(uploadsDir, `${trackingId}-cv.${cvExt}`), cvBuffer)
+        }
+        if (nidBuffer) {
+          writeFileSync(join(uploadsDir, `${trackingId}-nid-passport.${nidExt}`), nidBuffer)
+        }
+        writeFileSync(join(uploadsDir, `${trackingId}-signature.png`), sigBuffer)
+      } catch (fsErr) {
+        console.error("File save failed (non-critical):", fsErr)
+      }
     }
 
-    // Generate the registration PDF
+    // Generate the registration PDF (in-memory, works everywhere)
     let pdfBuffer: Buffer | null = null
     try {
       pdfBuffer = generateRegistrationPdfBuffer({
@@ -199,14 +190,22 @@ export async function POST(request: NextRequest) {
 
       // Save PDF locally (not on Vercel)
       if (!isVercel() && pdfBuffer) {
-        const pdfFilename = `${trackingId}-registration.pdf`
-        writeFileSync(join(uploadsDir, pdfFilename), pdfBuffer)
+        try {
+          const { writeFileSync } = await import("fs")
+          const { join } = await import("path")
+          writeFileSync(
+            join(process.cwd(), "public", "uploads", `${trackingId}-registration.pdf`),
+            pdfBuffer
+          )
+        } catch (e) {
+          console.error("PDF local save failed:", e)
+        }
       }
     } catch (err) {
       console.error("PDF generation failed (non-critical):", err)
     }
 
-    // Send Telegram notification with files directly (works on both local & Vercel)
+    // Send Telegram notification with files (works on both local & Vercel)
     if (isTelegramConfigured()) {
       sendRegistrationNotification({
         firstName,
@@ -223,10 +222,6 @@ export async function POST(request: NextRequest) {
         nidBuffer,
         nidExt,
         pdfBuffer,
-        // Also pass paths for local dev (alternative file sending)
-        photoPath,
-        cvPath,
-        nidPath: nidPassportPath,
       }).catch((err) => {
         console.error("Telegram notification failed (non-critical):", err)
       })

@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { safeDb } from "@/lib/db"
 import { LOGO_BASE64 } from "@/lib/logo-base64"
-import { readFileSync } from "fs"
-import { join } from "path"
 
 export async function POST(request: NextRequest) {
   try {
-    const { trackingId } = await request.json()
+    const body = await request.json()
+    const { trackingId } = body
 
     if (!trackingId) {
       return NextResponse.json(
@@ -15,9 +14,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const registration = await db.registration.findUnique({
-      where: { trackingId },
+    // Try to get data from database first (works locally with SQLite)
+    let registration = await safeDb(async (database) => {
+      return database.registration.findUnique({
+        where: { trackingId },
+      })
     })
+
+    // If DB lookup failed (e.g., on Vercel), use data sent from client
+    if (!registration) {
+      registration = body.registrationData || null
+    }
 
     if (!registration) {
       return NextResponse.json(
@@ -26,9 +33,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let sigSrc = registration.signatureData
-    if (sigSrc.startsWith("/uploads/")) {
+    // Handle signature data
+    let sigSrc = registration.signatureData || ""
+    if (sigSrc && sigSrc.startsWith("/uploads/")) {
+      // Try to read the file from disk (local only)
       try {
+        const { readFileSync } = await import("fs")
+        const { join } = await import("path")
         const sigBuf = readFileSync(join(process.cwd(), "public", sigSrc))
         sigSrc = `data:image/png;base64,${sigBuf.toString("base64")}`
       } catch {
@@ -75,10 +86,12 @@ function generatePdfHtml(
     skills: string
     department: string
     signatureData: string
-    createdAt: Date
+    createdAt: Date | string
   },
   sigSrc: string
 ) {
+  const createdDate = reg.createdAt instanceof Date ? reg.createdAt : new Date()
+
   const formatDate = (d: Date) =>
     d.toLocaleDateString("en-US", {
       year: "numeric",
@@ -142,7 +155,6 @@ function generatePdfHtml(
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 
-  /* ── HEADER ────────────────────────────────────────── */
   .header-band {
     background: #0a1628;
     padding: 12px 30px 10px;
@@ -190,7 +202,6 @@ function generatePdfHtml(
     margin-top: 2px;
   }
 
-  /* ── SUB HEADER ────────────────────────────────────── */
   .sub-header {
     background: #131d35;
     padding: 6px 30px;
@@ -223,7 +234,6 @@ function generatePdfHtml(
     letter-spacing: 0.5px;
   }
 
-  /* ── PAGE BODY ─────────────────────────────────────── */
   .page-body {
     flex: 1;
     padding: 10px 30px 8px;
@@ -231,7 +241,6 @@ function generatePdfHtml(
     flex-direction: column;
   }
 
-  /* ── SECTION ───────────────────────────────────────── */
   .section { margin-bottom: 8px; }
   .section-header {
     display: flex;
@@ -262,7 +271,6 @@ function generatePdfHtml(
     letter-spacing: 0.8px;
   }
 
-  /* ── FIELD GRID ────────────────────────────────────── */
   .fields {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -306,7 +314,6 @@ function generatePdfHtml(
     font-weight: 400;
   }
 
-  /* ── SIGNATURE ─────────────────────────────────────── */
   .sig-section {
     margin-top: auto;
     padding-top: 6px;
@@ -367,7 +374,6 @@ function generatePdfHtml(
     margin-top: 1px;
   }
 
-  /* ── DISCLAIMER ────────────────────────────────────── */
   .disclaimer {
     margin-top: 6px;
     padding: 6px 10px;
@@ -383,7 +389,6 @@ function generatePdfHtml(
   }
   .disclaimer-text strong { color: #475569; }
 
-  /* ── FOOTER ────────────────────────────────────────── */
   .footer-band {
     background: #0a1628;
     padding: 6px 30px;
@@ -419,7 +424,6 @@ function generatePdfHtml(
 </head>
 <body>
 
-  <!-- Header Band -->
   <div class="header-band">
     <div class="header-left">
       <img class="logo-img" src="${LOGO_BASE64}" alt="FrameMaxx Logo" />
@@ -434,7 +438,6 @@ function generatePdfHtml(
     </div>
   </div>
 
-  <!-- Sub-header Bar -->
   <div class="sub-header">
     <div class="tracking-chip">
       <span class="tracking-label">Tracking ID</span>
@@ -442,10 +445,8 @@ function generatePdfHtml(
     </div>
   </div>
 
-  <!-- Page Body -->
   <div class="page-body">
 
-    <!-- Personal Information -->
     <div class="section">
       <div class="section-header">
         <div class="section-icon">P</div>
@@ -479,7 +480,6 @@ function generatePdfHtml(
       </div>
     </div>
 
-    <!-- Contact Information -->
     <div class="section">
       <div class="section-header">
         <div class="section-icon">C</div>
@@ -501,7 +501,6 @@ function generatePdfHtml(
       </div>
     </div>
 
-    <!-- Professional Information -->
     <div class="section">
       <div class="section-header">
         <div class="section-icon">W</div>
@@ -531,7 +530,6 @@ function generatePdfHtml(
       </div>
     </div>
 
-    <!-- Signature -->
     <div class="sig-section">
       <div class="sig-section-title">Applicant Declaration &amp; Signature</div>
       <div class="sig-row">
@@ -542,14 +540,13 @@ function generatePdfHtml(
           <div class="sig-label">Applicant Signature</div>
         </div>
         <div class="date-block">
-          <div class="date-value">${formatDate(reg.createdAt)}</div>
-          <div class="date-sub">${formatTime(reg.createdAt)}</div>
+          <div class="date-value">${formatDate(createdDate)}</div>
+          <div class="date-sub">${formatTime(createdDate)}</div>
           <div class="date-label">Date &amp; Time of Submission</div>
         </div>
       </div>
     </div>
 
-    <!-- Disclaimer -->
     <div class="disclaimer">
       <div class="disclaimer-text">
         <strong>Confidential:</strong> This document is auto-generated by the FrameMaxx Registration Portal
@@ -561,14 +558,13 @@ function generatePdfHtml(
 
   </div>
 
-  <!-- Footer Band -->
   <div class="footer-band">
     <div class="footer-left">
       <span class="footer-brand">FrameMaxx</span> &mdash; Official Registration Document
       <span class="footer-badge">${reg.trackingId}</span>
     </div>
     <div class="footer-right">
-      Generated ${formatDate(reg.createdAt)} at ${formatTime(reg.createdAt)} &bull; Page 1 of 1
+      Generated ${formatDate(createdDate)} at ${formatTime(createdDate)} &bull; Page 1 of 1
     </div>
   </div>
 

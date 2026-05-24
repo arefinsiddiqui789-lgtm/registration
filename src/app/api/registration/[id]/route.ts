@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { safeDb } from "@/lib/db"
 
 export async function GET(
   request: NextRequest,
@@ -7,8 +7,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const registration = await db.registration.findUnique({
-      where: { trackingId: id },
+    const registration = await safeDb(async (database) => {
+      return database.registration.findUnique({
+        where: { trackingId: id },
+      })
     })
 
     if (!registration) {

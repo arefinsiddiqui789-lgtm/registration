@@ -5,9 +5,6 @@
  * using multipart/form-data file uploads via Buffer — works on both local and Vercel!
  */
 
-import { readFileSync } from "fs"
-import { join } from "path"
-
 export function isTelegramConfigured(): boolean {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim() || ""
   const chatId = process.env.TELEGRAM_CHAT_ID?.trim() || ""
@@ -142,27 +139,7 @@ export async function sendTelegramDocumentBuffer(
   }
 }
 
-// Send a photo from file path (local only)
-async function sendTelegramPhotoFile(
-  filePath: string,
-  caption: string
-): Promise<TelegramResult> {
-  const buffer = readFileSync(filePath)
-  const filename = filePath.split("/").pop() || "photo.png"
-  return sendTelegramPhotoBuffer(buffer, filename, caption)
-}
-
-// Send a document from file path (local only)
-async function sendTelegramDocumentFile(
-  filePath: string,
-  caption: string
-): Promise<TelegramResult> {
-  const buffer = readFileSync(filePath)
-  const filename = filePath.split("/").pop() || "document.pdf"
-  return sendTelegramDocumentBuffer(buffer, filename, caption)
-}
-
-// Send full registration notification — supports both Buffer (Vercel) and file paths (local)
+// Send full registration notification — uses buffers only (works on both Vercel and local)
 export async function sendRegistrationNotification({
   firstName,
   lastName,
@@ -178,9 +155,6 @@ export async function sendRegistrationNotification({
   nidBuffer,
   nidExt,
   pdfBuffer,
-  photoPath,
-  cvPath,
-  nidPath,
 }: {
   firstName: string
   lastName: string
@@ -196,6 +170,7 @@ export async function sendRegistrationNotification({
   nidBuffer: Buffer | null
   nidExt: string
   pdfBuffer: Buffer | null
+  // Legacy path params (ignored, kept for compatibility)
   photoPath?: string | null
   cvPath?: string | null
   nidPath?: string | null
@@ -203,9 +178,9 @@ export async function sendRegistrationNotification({
   // 1. Send the text message with registration details
   const uploadsInfo: string[] = []
   if (pdfBuffer) uploadsInfo.push("📑 Registration PDF")
-  if (photoBuffer || photoPath) uploadsInfo.push("📸 Profile Photo")
-  if (cvBuffer || cvPath) uploadsInfo.push("📄 CV")
-  if (nidBuffer || nidPath) uploadsInfo.push("🪪 NID/Passport")
+  if (photoBuffer) uploadsInfo.push("📸 Profile Photo")
+  if (cvBuffer) uploadsInfo.push("📄 CV")
+  if (nidBuffer) uploadsInfo.push("🪪 NID/Passport")
 
   const message = `🆕 *New FrameMaxx Registration!*
 
@@ -241,12 +216,6 @@ ${uploadsInfo.length > 0 ? uploadsInfo.join("\n") : "No files uploaded"}
       `${trackingId}-photo.${photoExt}`,
       `📸 ${firstName} ${lastName} - Profile Photo\n🏷️ ${trackingId}`
     ).catch(() => {})
-  } else if (photoPath) {
-    const fullPath = join(process.cwd(), "public", photoPath)
-    await sendTelegramPhotoFile(
-      fullPath,
-      `📸 ${firstName} ${lastName} - Profile Photo\n🏷️ ${trackingId}`
-    ).catch(() => {})
   }
 
   // 4. Send CV as document
@@ -254,12 +223,6 @@ ${uploadsInfo.length > 0 ? uploadsInfo.join("\n") : "No files uploaded"}
     await sendTelegramDocumentBuffer(
       cvBuffer,
       `${trackingId}-cv.${cvExt}`,
-      `📄 ${firstName} ${lastName} - CV\n🏷️ ${trackingId}`
-    ).catch(() => {})
-  } else if (cvPath) {
-    const fullPath = join(process.cwd(), "public", cvPath)
-    await sendTelegramDocumentFile(
-      fullPath,
       `📄 ${firstName} ${lastName} - CV\n🏷️ ${trackingId}`
     ).catch(() => {})
   }
@@ -277,20 +240,6 @@ ${uploadsInfo.length > 0 ? uploadsInfo.join("\n") : "No files uploaded"}
       await sendTelegramDocumentBuffer(
         nidBuffer,
         `${trackingId}-nid-passport.${nidExt}`,
-        `🪪 ${firstName} ${lastName} - NID/Passport\n🏷️ ${trackingId}`
-      ).catch(() => {})
-    }
-  } else if (nidPath) {
-    const fullPath = join(process.cwd(), "public", nidPath)
-    const ext = nidPath.toLowerCase().split(".").pop()
-    if (ext === "png" || ext === "jpg" || ext === "jpeg" || ext === "webp") {
-      await sendTelegramPhotoFile(
-        fullPath,
-        `🪪 ${firstName} ${lastName} - NID/Passport\n🏷️ ${trackingId}`
-      ).catch(() => {})
-    } else {
-      await sendTelegramDocumentFile(
-        fullPath,
         `🪪 ${firstName} ${lastName} - NID/Passport\n🏷️ ${trackingId}`
       ).catch(() => {})
     }
