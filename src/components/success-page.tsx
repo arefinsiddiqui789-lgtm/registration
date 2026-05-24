@@ -231,7 +231,7 @@ export function SuccessPage() {
           </motion.div>
         )}
 
-        {/* PDF Preview */}
+        {/* PDF Preview - A4 Paper Style */}
         {pdfHtml && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -240,17 +240,25 @@ export function SuccessPage() {
           >
             <Card className="glass border-border/50 shadow-lg">
               <CardContent className="p-6">
-                <h3 className="font-semibold text-foreground mb-4">
-                  Document Preview
-                </h3>
-                <div className="border rounded-lg overflow-hidden bg-white shadow-inner">
-                  <iframe
-                    ref={iframeRef}
-                    srcDoc={pdfHtml}
-                    className="w-full border-0"
-                    style={{ height: "800px" }}
-                    title="Registration Document"
-                  />
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-foreground">
+                    Document Preview
+                  </h3>
+                  <span className="text-xs text-muted-foreground">
+                    A4 Format &bull; 210 &times; 297 mm
+                  </span>
+                </div>
+                {/* A4 Paper container with proper aspect ratio */}
+                <div className="bg-slate-200 dark:bg-slate-800 rounded-xl p-4 sm:p-8 overflow-auto">
+                  <div className="mx-auto shadow-2xl" style={{ maxWidth: "794px" }}>
+                    <iframe
+                      ref={iframeRef}
+                      srcDoc={pdfHtml}
+                      className="w-full border-0 bg-white rounded-sm"
+                      style={{ height: "1123px", maxWidth: "794px" }}
+                      title="Registration Document"
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
