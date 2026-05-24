@@ -225,3 +225,23 @@ Stage Summary:
   - Links to download uploaded photo, CV, and NID/Passport
   - Profile photo sent as WhatsApp image
 - Needs one-time CallMeBot activation to get API key
+---
+Task ID: 18
+Agent: Main Agent
+Task: Fix Telegram to send photos as images (not PDF) and upload files directly
+
+Work Log:
+- Rewrote telegram.ts to use multipart/form-data file uploads instead of URL-based sends
+- sendTelegramPhotoFile() - reads file from disk and uploads directly as photo (shows as image in Telegram)
+- sendTelegramDocumentFile() - reads file from disk and uploads directly as document (PDF, etc.)
+- NID/Passport: if image (png/jpg/webp), sends as photo; if PDF, sends as document
+- Fixed register/route.ts: NID/Passport files now saved with correct extension (not always .pdf)
+- Added getExtFromBase64() helper to detect actual file type from data URI
+- Updated sendRegistrationNotification() to use local file paths instead of public URLs
+- Old URL-based approach failed because Telegram can't access localhost URLs
+
+Stage Summary:
+- Photos now appear as real images in Telegram (not as PDF documents)
+- Files are uploaded directly from server filesystem using multipart/form-data
+- NID/Passport images show as photos, PDFs show as documents
+- All file types preserved correctly (png, jpg, pdf, webp)

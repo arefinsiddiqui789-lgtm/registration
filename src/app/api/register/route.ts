@@ -11,6 +11,19 @@ function generateTrackingId(): string {
   return `FMX-${year}-${hex}`
 }
 
+// Detect file extension from base64 data URI
+function getExtFromBase64(dataUri: string): string {
+  const match = dataUri.match(/^data:([^;]+);/)
+  if (match) {
+    const mime = match[1]
+    if (mime.includes("pdf")) return "pdf"
+    if (mime.includes("png")) return "png"
+    if (mime.includes("jpeg") || mime.includes("jpg")) return "jpg"
+    if (mime.includes("webp")) return "webp"
+  }
+  return "bin"
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -72,21 +85,24 @@ export async function POST(request: NextRequest) {
 
     if (photoBase64) {
       const buffer = Buffer.from(photoBase64.split(",")[1] || photoBase64, "base64")
-      const filename = `${trackingId}-photo.png`
+      const ext = getExtFromBase64(photoBase64)
+      const filename = `${trackingId}-photo.${ext}`
       writeFileSync(join(uploadsDir, filename), buffer)
       photoPath = `/uploads/${filename}`
     }
 
     if (cvBase64) {
       const buffer = Buffer.from(cvBase64.split(",")[1] || cvBase64, "base64")
-      const filename = `${trackingId}-cv.pdf`
+      const ext = getExtFromBase64(cvBase64)
+      const filename = `${trackingId}-cv.${ext}`
       writeFileSync(join(uploadsDir, filename), buffer)
       cvPath = `/uploads/${filename}`
     }
 
     if (nidPassportBase64) {
       const buffer = Buffer.from(nidPassportBase64.split(",")[1] || nidPassportBase64, "base64")
-      const filename = `${trackingId}-nid-passport.pdf`
+      const ext = getExtFromBase64(nidPassportBase64)
+      const filename = `${trackingId}-nid-passport.${ext}`
       writeFileSync(join(uploadsDir, filename), buffer)
       nidPassportPath = `/uploads/${filename}`
     }
@@ -130,7 +146,6 @@ export async function POST(request: NextRequest) {
 
     // Send Telegram notification in background (don't block registration)
     if (isTelegramConfigured()) {
-      const host = request.headers.get("host") || "localhost:3000"
       sendRegistrationNotification({
         firstName,
         lastName,
@@ -139,10 +154,9 @@ export async function POST(request: NextRequest) {
         trackingId,
         department: department || "",
         occupation: occupation || "",
-        photoUrl: photoPath,
-        cvUrl: cvPath,
-        nidUrl: nidPassportPath,
-        host,
+        photoPath,
+        cvPath,
+        nidPath: nidPassportPath,
       }).catch((err) => {
         console.error("Telegram notification failed (non-critical):", err)
       })
