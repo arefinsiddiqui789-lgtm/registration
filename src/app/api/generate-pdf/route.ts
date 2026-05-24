@@ -161,7 +161,7 @@ function generatePdfHtml(
   /* ── HEADER ────────────────────────────────────────── */
   .header-band {
     background: #0a1628;
-    padding: 18px 36px 14px;
+    padding: 12px 30px 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -170,36 +170,36 @@ function generatePdfHtml(
   .header-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }
   .logo-img {
-    width: 48px;
-    height: 48px;
-    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
     object-fit: contain;
   }
   .brand-name {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: bold;
     color: #ffffff;
     letter-spacing: -0.3px;
   }
   .brand-tagline {
-    font-size: 9px;
+    font-size: 8px;
     color: #94a3b8;
-    letter-spacing: 3px;
+    letter-spacing: 2px;
     text-transform: uppercase;
     margin-top: 1px;
   }
   .header-right { text-align: right; }
   .doc-label {
-    font-size: 8px;
+    font-size: 7px;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 1.5px;
   }
   .doc-title-header {
-    font-size: 15px;
+    font-size: 13px;
     font-weight: bold;
     color: #ffffff;
     letter-spacing: 0.5px;
@@ -209,7 +209,7 @@ function generatePdfHtml(
   /* ── SUB HEADER ────────────────────────────────────── */
   .sub-header {
     background: #131d35;
-    padding: 8px 36px;
+    padding: 6px 30px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -218,21 +218,21 @@ function generatePdfHtml(
   .tracking-chip {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     background: rgba(255,255,255,0.08);
     border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 5px;
-    padding: 4px 12px;
+    border-radius: 4px;
+    padding: 3px 10px;
   }
   .tracking-label {
-    font-size: 8px;
+    font-size: 7px;
     color: #94a3b8;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
     font-weight: bold;
   }
   .tracking-value {
-    font-size: 11px;
+    font-size: 10px;
     color: #e2e8f0;
     font-weight: bold;
     font-family: 'Courier New', Courier, monospace;
@@ -241,58 +241,59 @@ function generatePdfHtml(
   .qr-wrapper {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
   }
   .qr-img {
-    width: 44px;
-    height: 44px;
-    border-radius: 4px;
+    width: 36px;
+    height: 36px;
+    border-radius: 3px;
     border: 1px solid rgba(255,255,255,0.15);
   }
   .qr-label {
-    font-size: 7px;
+    font-size: 6px;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
   }
 
   /* ── PAGE BODY ─────────────────────────────────────── */
   .page-body {
     flex: 1;
-    padding: 16px 36px 12px;
+    padding: 10px 30px 8px;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   /* ── SECTION ───────────────────────────────────────── */
-  .section { margin-bottom: 12px; }
+  .section { margin-bottom: 8px; }
   .section-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-    padding-bottom: 5px;
+    gap: 6px;
+    margin-bottom: 5px;
+    padding-bottom: 4px;
     border-bottom: 2px solid #0a1628;
   }
   .section-icon {
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
     background: #0a1628;
-    border-radius: 4px;
+    border-radius: 3px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
+    font-size: 9px;
     color: #d4a843;
     font-weight: bold;
     flex-shrink: 0;
   }
   .section-title {
-    font-size: 12px;
+    font-size: 10px;
     font-weight: bold;
     color: #0a1628;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
   }
 
   /* ── FIELD GRID ────────────────────────────────────── */
@@ -304,9 +305,11 @@ function generatePdfHtml(
     overflow: hidden;
   }
   .field {
-    padding: 7px 12px;
+    padding: 6px 10px;
     border-bottom: 1px solid #e2e8f0;
     border-right: 1px solid #e2e8f0;
+    min-width: 0;
+    overflow: hidden;
   }
   .field:nth-child(2n) { border-right: none; }
   .field:nth-last-child(-n+2) { border-bottom: none; }
@@ -315,17 +318,25 @@ function generatePdfHtml(
     border-right: none;
   }
   .field-label {
-    font-size: 8.5px;
+    font-size: 8px;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.6px;
     font-weight: bold;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .field-value {
-    font-size: 12px;
+    font-size: 11px;
     color: #0f172a;
     font-weight: 600;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    max-height: 32px;
+    overflow: hidden;
   }
   .field-value.na {
     color: #94a3b8;
@@ -336,16 +347,17 @@ function generatePdfHtml(
   /* ── SIGNATURE ─────────────────────────────────────── */
   .sig-section {
     margin-top: auto;
-    padding-top: 10px;
+    padding-top: 6px;
     border-top: 2px solid #e2e8f0;
+    flex-shrink: 0;
   }
   .sig-section-title {
-    font-size: 9px;
+    font-size: 8px;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
     font-weight: bold;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
   }
   .sig-row {
     display: flex;
@@ -354,72 +366,72 @@ function generatePdfHtml(
   }
   .sig-block { text-align: center; }
   .sig-image {
-    max-height: 48px;
-    max-width: 160px;
-    margin-bottom: 4px;
+    max-height: 40px;
+    max-width: 140px;
+    margin-bottom: 3px;
   }
   .sig-line {
-    width: 160px;
+    width: 140px;
     border-bottom: 1.5px solid #0a1628;
-    margin: 0 auto 3px;
+    margin: 0 auto 2px;
   }
   .sig-name {
-    font-size: 10px;
+    font-size: 9px;
     color: #0f172a;
     font-weight: bold;
   }
   .sig-label {
-    font-size: 8px;
+    font-size: 7px;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
   }
   .date-block { text-align: right; }
   .date-value {
-    font-size: 12px;
+    font-size: 11px;
     color: #0f172a;
     font-weight: bold;
   }
   .date-sub {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 400;
     color: #475569;
   }
   .date-label {
-    font-size: 8px;
+    font-size: 7px;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-top: 2px;
+    letter-spacing: 0.8px;
+    margin-top: 1px;
   }
 
   /* ── DISCLAIMER ────────────────────────────────────── */
   .disclaimer {
-    margin-top: 10px;
-    padding: 8px 12px;
+    margin-top: 6px;
+    padding: 6px 10px;
     background: #f8fafc;
     border-left: 3px solid #0a1628;
     border-radius: 0 4px 4px 0;
     flex-shrink: 0;
   }
   .disclaimer-text {
-    font-size: 8.5px;
+    font-size: 7.5px;
     color: #64748b;
-    line-height: 1.5;
+    line-height: 1.4;
   }
   .disclaimer-text strong { color: #475569; }
 
   /* ── FOOTER ────────────────────────────────────────── */
   .footer-band {
     background: #0a1628;
-    padding: 7px 36px;
+    padding: 6px 30px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
   }
   .footer-left {
-    font-size: 8px;
+    font-size: 7px;
     color: #64748b;
   }
   .footer-left .footer-brand {
@@ -427,19 +439,19 @@ function generatePdfHtml(
     font-weight: bold;
   }
   .footer-right {
-    font-size: 8px;
+    font-size: 7px;
     color: #475569;
   }
   .footer-badge {
     display: inline-block;
     background: rgba(255,255,255,0.08);
     color: #94a3b8;
-    padding: 1px 7px;
+    padding: 1px 6px;
     border-radius: 3px;
-    font-size: 8px;
+    font-size: 7px;
     font-weight: bold;
     font-family: 'Courier New', Courier, monospace;
-    margin-left: 5px;
+    margin-left: 4px;
   }
 </style>
 </head>

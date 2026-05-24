@@ -115,7 +115,9 @@ export function SuccessPage() {
       // A4: 210 x 297 mm
       const pw = 210
       const ph = 297
-      const m = 14 // margin
+      const m = 12 // margin
+      const footerH = 12
+      const maxContentY = ph - footerH - 2 // stop before footer
 
       // Colors
       const cDark = [10, 22, 40]
@@ -129,108 +131,120 @@ export function SuccessPage() {
 
       // ── HEADER BAND ──────────────────────────────────────
       doc.setFillColor(...cDark)
-      doc.rect(0, 0, pw, 34, "F")
+      doc.rect(0, 0, pw, 28, "F")
 
       // Logo
       try {
-        doc.addImage(LOGO_BASE64, "PNG", m, 5, 22, 22)
+        doc.addImage(LOGO_BASE64, "PNG", m, 4, 18, 18)
       } catch {
-        // Fallback: draw placeholder
         doc.setFillColor(...cGold)
-        doc.roundedRect(m, 5, 22, 22, 3, 3, "F")
+        doc.roundedRect(m, 4, 18, 18, 2, 2, "F")
         doc.setTextColor(...cDark)
-        doc.setFontSize(14)
+        doc.setFontSize(12)
         doc.setFont("helvetica", "bold")
-        doc.text("FM", m + 11, 18, { align: "center" })
+        doc.text("FM", m + 9, 15, { align: "center" })
       }
 
       // Brand name
       doc.setTextColor(...cWhite)
-      doc.setFontSize(22)
+      doc.setFontSize(18)
       doc.setFont("helvetica", "bold")
-      doc.text("FrameMaxx", m + 28, 15)
+      doc.text("FrameMaxx", m + 22, 13)
 
       // Brand tagline
       doc.setTextColor(148, 163, 184)
-      doc.setFontSize(7)
+      doc.setFontSize(6)
       doc.setFont("helvetica", "normal")
-      doc.text("PROFESSIONAL AGENCY", m + 28, 20)
+      doc.text("PROFESSIONAL AGENCY", m + 22, 18)
 
       // Document label (right side)
       doc.setTextColor(...cMuted)
-      doc.setFontSize(7)
+      doc.setFontSize(6)
       doc.setFont("helvetica", "normal")
-      doc.text("OFFICIAL DOCUMENT", pw - m, 12, { align: "right" })
+      doc.text("OFFICIAL DOCUMENT", pw - m, 10, { align: "right" })
 
       // Document title (right side)
       doc.setTextColor(...cWhite)
-      doc.setFontSize(13)
+      doc.setFontSize(11)
       doc.setFont("helvetica", "bold")
-      doc.text("Registration Certificate", pw - m, 20, { align: "right" })
+      doc.text("Registration Certificate", pw - m, 17, { align: "right" })
 
       // ── SUB HEADER ───────────────────────────────────────
       doc.setFillColor(...cSubDark)
-      doc.rect(0, 34, pw, 16, "F")
+      doc.rect(0, 28, pw, 13, "F")
 
-      // Tracking ID chip background (simulated transparency with solid colors)
+      // Tracking ID chip background
       doc.setDrawColor(50, 65, 100)
       doc.setLineWidth(0.3)
       doc.setFillColor(30, 42, 70)
-      doc.roundedRect(m, 37, 72, 10, 1.5, 1.5, "FD")
+      doc.roundedRect(m, 30, 68, 8, 1.5, 1.5, "FD")
 
       // Tracking ID label
       doc.setTextColor(148, 163, 184)
-      doc.setFontSize(6)
+      doc.setFontSize(5)
       doc.setFont("helvetica", "bold")
-      doc.text("TRACKING ID", m + 5, 41.5)
+      doc.text("TRACKING ID", m + 4, 33.5)
 
       // Tracking ID value
       doc.setTextColor(226, 232, 240)
-      doc.setFontSize(9)
+      doc.setFontSize(8)
       doc.setFont("courier", "bold")
-      doc.text(trackingId, m + 5, 45.5)
+      doc.text(trackingId, m + 4, 37)
 
       // QR Code
       if (qrCodeDataUrl) {
         try {
-          doc.addImage(qrCodeDataUrl, "PNG", pw - m - 13, 36, 12, 12)
+          doc.addImage(qrCodeDataUrl, "PNG", pw - m - 11, 29.5, 10, 10)
         } catch {
           // Skip QR if image fails
         }
         doc.setTextColor(...cMuted)
-        doc.setFontSize(5)
+        doc.setFontSize(4)
         doc.setFont("helvetica", "normal")
-        doc.text("Scan to verify", pw - m - 13, 50)
+        doc.text("Scan to verify", pw - m - 11, 41)
       }
 
       // ── HELPER FUNCTIONS ─────────────────────────────────
-      let y = 54
+      let y = 44
 
       const drawSection = (title: string, letter: string, sy: number): number => {
+        if (sy > maxContentY - 10) return sy // skip if too low
         // Icon box
         doc.setFillColor(...cDark)
-        doc.roundedRect(m, sy, 6, 6, 1, 1, "F")
+        doc.roundedRect(m, sy, 5, 5, 1, 1, "F")
         doc.setTextColor(...cGold)
-        doc.setFontSize(8)
+        doc.setFontSize(7)
         doc.setFont("helvetica", "bold")
-        doc.text(letter, m + 3, sy + 4.2, { align: "center" })
+        doc.text(letter, m + 2.5, sy + 3.5, { align: "center" })
 
         // Title
         doc.setTextColor(...cDark)
-        doc.setFontSize(10)
+        doc.setFontSize(9)
         doc.setFont("helvetica", "bold")
-        doc.text(title.toUpperCase(), m + 9, sy + 4.5)
+        doc.text(title.toUpperCase(), m + 8, sy + 3.8)
 
         // Underline
         doc.setDrawColor(...cDark)
-        doc.setLineWidth(0.8)
-        doc.line(m, sy + 7, pw - m, sy + 7)
+        doc.setLineWidth(0.6)
+        doc.line(m, sy + 6, pw - m, sy + 6)
 
-        return sy + 10
+        return sy + 8
       }
 
-      const fh = 11 // field row height
+      const fh = 9 // field row height
       const hw = (pw - 2 * m) / 2 // half width
+      const contentW = pw - 2 * m - 5 // text max width in a cell
+      const halfContentW = hw - 5 // text max width in half cell
+
+      // Helper: truncate text to fit max width
+      const truncText = (txt: string, maxW: number): string => {
+        if (doc.getTextWidth(txt) <= maxW) return txt
+        let t = txt
+        while (doc.getTextWidth(t + "...") > maxW && t.length > 0) {
+          t = t.slice(0, -1)
+        }
+        return t + "..."
+      }
 
       const drawFieldRow = (
         label1: string,
@@ -240,6 +254,7 @@ export function SuccessPage() {
         fy: number,
         fullSpan = false
       ) => {
+        if (fy > maxContentY - fh) return // skip if would overflow page
         const rowW = fullSpan ? pw - 2 * m : hw
 
         // Cell 1
@@ -249,9 +264,9 @@ export function SuccessPage() {
 
         // Label 1
         doc.setTextColor(...cMuted)
-        doc.setFontSize(6)
+        doc.setFontSize(5)
         doc.setFont("helvetica", "bold")
-        doc.text(label1.toUpperCase(), m + 2.5, fy + 3.5)
+        doc.text(truncText(label1.toUpperCase(), rowW - 5), m + 2, fy + 3)
 
         // Value 1
         if (!value1) {
@@ -261,16 +276,9 @@ export function SuccessPage() {
           doc.setTextColor(...cText)
           doc.setFont("helvetica", "bold")
         }
-        doc.setFontSize(9)
-        let dv1 = value1 || "Not specified"
-        const mw1 = rowW - 5
-        if (doc.getTextWidth(dv1) > mw1) {
-          while (doc.getTextWidth(dv1 + "...") > mw1 && dv1.length > 0) {
-            dv1 = dv1.slice(0, -1)
-          }
-          dv1 += "..."
-        }
-        doc.text(dv1, m + 2.5, fy + 8)
+        doc.setFontSize(8)
+        const dv1 = truncText(value1 || "Not specified", fullSpan ? contentW : halfContentW)
+        doc.text(dv1, m + 2, fy + 7)
 
         if (!fullSpan) {
           // Cell 2
@@ -278,9 +286,9 @@ export function SuccessPage() {
 
           // Label 2
           doc.setTextColor(...cMuted)
-          doc.setFontSize(6)
+          doc.setFontSize(5)
           doc.setFont("helvetica", "bold")
-          doc.text(label2.toUpperCase(), m + hw + 2.5, fy + 3.5)
+          doc.text(truncText(label2.toUpperCase(), halfContentW), m + hw + 2, fy + 3)
 
           // Value 2
           if (!value2) {
@@ -290,16 +298,9 @@ export function SuccessPage() {
             doc.setTextColor(...cText)
             doc.setFont("helvetica", "bold")
           }
-          doc.setFontSize(9)
-          let dv2 = value2 || "Not specified"
-          const mw2 = hw - 5
-          if (doc.getTextWidth(dv2) > mw2) {
-            while (doc.getTextWidth(dv2 + "...") > mw2 && dv2.length > 0) {
-              dv2 = dv2.slice(0, -1)
-            }
-            dv2 += "..."
-          }
-          doc.text(dv2, m + hw + 2.5, fy + 8)
+          doc.setFontSize(8)
+          const dv2 = truncText(value2 || "Not specified", halfContentW)
+          doc.text(dv2, m + hw + 2, fy + 7)
         }
       }
 
@@ -344,7 +345,7 @@ export function SuccessPage() {
         data.nidPassportType === "Passport" ? "Passport" : "National ID (NID)",
         y
       )
-      y += fh + 4
+      y += fh + 3
 
       // ── CONTACT INFORMATION ──────────────────────────────
       y = drawSection("Contact Information", "C", y)
@@ -360,7 +361,7 @@ export function SuccessPage() {
 
       const fullAddr = `${data.address || ""}${data.city ? ", " + data.city : ""}${data.state ? ", " + data.state : ""}${data.postalCode ? " " + data.postalCode : ""}${data.country ? ", " + data.country : ""}`
       drawFieldRow("Address", fullAddr, "", "", y, true)
-      y += fh + 4
+      y += fh + 3
 
       // ── PROFESSIONAL INFORMATION ─────────────────────────
       y = drawSection("Professional Information", "W", y)
@@ -384,121 +385,137 @@ export function SuccessPage() {
       y += fh
 
       drawFieldRow("Skills & Expertise", data.skills, "", "", y, true)
-      y += fh + 5
+      y += fh + 4
 
       // ── SIGNATURE SECTION ────────────────────────────────
-      doc.setDrawColor(226, 232, 240)
-      doc.setLineWidth(0.6)
-      doc.line(m, y, pw - m, y)
-      y += 3
+      if (y < maxContentY - 30) {
+        doc.setDrawColor(226, 232, 240)
+        doc.setLineWidth(0.5)
+        doc.line(m, y, pw - m, y)
+        y += 2
 
-      doc.setTextColor(...cMuted)
-      doc.setFontSize(6)
-      doc.setFont("helvetica", "bold")
-      doc.text("APPLICANT DECLARATION & SIGNATURE", m, y + 3)
-      y += 7
+        doc.setTextColor(...cMuted)
+        doc.setFontSize(5)
+        doc.setFont("helvetica", "bold")
+        doc.text("APPLICANT DECLARATION & SIGNATURE", m, y + 2.5)
+        y += 5
 
-      // Signature line
-      doc.setDrawColor(...cDark)
-      doc.setLineWidth(0.3)
-      doc.line(m, y + 15, m + 55, y + 15)
+        // Signature line
+        doc.setDrawColor(...cDark)
+        doc.setLineWidth(0.3)
+        doc.line(m, y + 12, m + 50, y + 12)
 
-      // Add signature image
-      const sigData = data.signatureData
-      if (sigData && sigData.startsWith("data:")) {
-        try {
-          doc.addImage(sigData, "PNG", m + 5, y - 2, 45, 16)
-        } catch {
-          // Skip signature image if it fails
+        // Add signature image
+        const sigData = data.signatureData
+        if (sigData && sigData.startsWith("data:")) {
+          try {
+            doc.addImage(sigData, "PNG", m + 4, y - 1, 40, 13)
+          } catch {
+            // Skip signature image if it fails
+          }
         }
+
+        // Name under line
+        doc.setTextColor(...cText)
+        doc.setFontSize(7)
+        doc.setFont("helvetica", "bold")
+        doc.text(`${data.firstName} ${data.lastName}`, m, y + 16)
+
+        doc.setTextColor(...cMuted)
+        doc.setFontSize(5)
+        doc.setFont("helvetica", "normal")
+        doc.text("Applicant Signature", m, y + 19)
+
+        // Date on right side
+        const now = new Date()
+        const dateStr = now.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+        const timeStr = now.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+
+        doc.setTextColor(...cText)
+        doc.setFontSize(8)
+        doc.setFont("helvetica", "bold")
+        doc.text(dateStr, pw - m, y + 2.5, { align: "right" })
+        doc.setFontSize(7)
+        doc.setFont("helvetica", "normal")
+        doc.setTextColor(71, 85, 105)
+        doc.text(timeStr, pw - m, y + 7, { align: "right" })
+        doc.setTextColor(...cMuted)
+        doc.setFontSize(5)
+        doc.text("Date & Time of Submission", pw - m, y + 10, { align: "right" })
+
+        y += 22
       }
 
-      // Name under line
-      doc.setTextColor(...cText)
-      doc.setFontSize(8)
-      doc.setFont("helvetica", "bold")
-      doc.text(`${data.firstName} ${data.lastName}`, m, y + 19)
+      // ── DISCLAIMER ───────────────────────────────────────
+      if (y < maxContentY - 12) {
+        const disclaimerH = 12
+        doc.setFillColor(...cLightBg)
+        doc.rect(m, y, pw - 2 * m, disclaimerH, "F")
+        doc.setFillColor(...cDark)
+        doc.rect(m, y, 1, disclaimerH, "F")
 
-      doc.setTextColor(...cMuted)
-      doc.setFontSize(6)
-      doc.setFont("helvetica", "normal")
-      doc.text("Applicant Signature", m, y + 23)
+        doc.setTextColor(...cMuted)
+        doc.setFontSize(5.5)
+        doc.setFont("helvetica", "normal")
+        const disclaimer =
+          "Confidential: This document is auto-generated by the FrameMaxx Registration Portal and contains confidential information. The digital signature above confirms the applicant's agreement to the Privacy Policy and Terms & Conditions. Unauthorized reproduction or distribution is prohibited. For verification, scan the QR code or contact support@framemaxx.com with tracking ID " +
+          trackingId +
+          "."
+        doc.text(disclaimer, m + 3, y + 3.5, {
+          maxWidth: pw - 2 * m - 6,
+        })
+      }
 
-      // Date on right side
-      const now = new Date()
-      const dateStr = now.toLocaleDateString("en-US", {
+      // ── FOOTER BAND ──────────────────────────────────────
+      const footerY = ph - footerH
+      doc.setFillColor(...cDark)
+      doc.rect(0, footerY, pw, footerH, "F")
+
+      const now2 = new Date()
+      const dateStr2 = now2.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
         day: "numeric",
       })
-      const timeStr = now.toLocaleTimeString("en-US", {
+      const timeStr2 = now2.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
       })
 
-      doc.setTextColor(...cText)
-      doc.setFontSize(9)
-      doc.setFont("helvetica", "bold")
-      doc.text(dateStr, pw - m, y + 3, { align: "right" })
-      doc.setFontSize(8)
-      doc.setFont("helvetica", "normal")
-      doc.setTextColor(71, 85, 105)
-      doc.text(timeStr, pw - m, y + 8, { align: "right" })
-      doc.setTextColor(...cMuted)
-      doc.setFontSize(6)
-      doc.text("Date & Time of Submission", pw - m, y + 12, { align: "right" })
-
-      y += 27
-
-      // ── DISCLAIMER ───────────────────────────────────────
-      doc.setFillColor(...cLightBg)
-      doc.rect(m, y, pw - 2 * m, 15, "F")
-      doc.setFillColor(...cDark)
-      doc.rect(m, y, 1.2, 15, "F")
-
-      doc.setTextColor(...cMuted)
-      doc.setFontSize(6.5)
-      doc.setFont("helvetica", "normal")
-      const disclaimer =
-        "Confidential: This document is auto-generated by the FrameMaxx Registration Portal and contains confidential information. The digital signature above confirms the applicant's agreement to the Privacy Policy and Terms & Conditions. Unauthorized reproduction or distribution is prohibited. For verification, scan the QR code or contact support@framemaxx.com with tracking ID " +
-        trackingId +
-        "."
-      doc.text(disclaimer, m + 4, y + 4, {
-        maxWidth: pw - 2 * m - 8,
-      })
-
-      // ── FOOTER BAND ──────────────────────────────────────
-      const footerY = ph - 14
-      doc.setFillColor(...cDark)
-      doc.rect(0, footerY, pw, 14, "F")
-
       // Left side
       doc.setTextColor(148, 163, 184)
-      doc.setFontSize(6.5)
+      doc.setFontSize(5.5)
       doc.setFont("helvetica", "bold")
-      doc.text("FrameMaxx", m, footerY + 5.5)
+      doc.text("FrameMaxx", m, footerY + 4.5)
       doc.setFont("helvetica", "normal")
       doc.setTextColor(...cMuted)
-      doc.text("  \u2014  Official Registration Document", m + 16, footerY + 5.5)
+      doc.text("  \u2014  Official Registration Document", m + 14, footerY + 4.5)
 
-      // Tracking ID badge (simulated transparency)
+      // Tracking ID badge
       doc.setDrawColor(40, 55, 85)
       doc.setFillColor(22, 38, 62)
       doc.setLineWidth(0.2)
-      doc.roundedRect(m + 72, footerY + 2.5, 32, 5, 1, 1, "FD")
+      doc.roundedRect(m + 65, footerY + 2, 30, 4.5, 1, 1, "FD")
       doc.setTextColor(148, 163, 184)
       doc.setFont("courier", "bold")
-      doc.setFontSize(5.5)
-      doc.text(trackingId, m + 74, footerY + 6)
+      doc.setFontSize(5)
+      doc.text(trackingId, m + 67, footerY + 5)
 
       // Right side
       doc.setTextColor(71, 85, 105)
       doc.setFont("helvetica", "normal")
-      doc.setFontSize(5.5)
+      doc.setFontSize(5)
       doc.text(
-        `Generated ${dateStr} at ${timeStr}  \u2022  Page 1 of 1`,
+        `Generated ${dateStr2} at ${timeStr2}  \u2022  Page 1 of 1`,
         pw - m,
-        footerY + 5.5,
+        footerY + 4.5,
         { align: "right" }
       )
 

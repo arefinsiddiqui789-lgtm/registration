@@ -114,3 +114,34 @@ Stage Summary:
 - All links show as blue underlined text for clear visual identification
 - HTML preview/print also has matching clickable links
 - Both jsPDF vector PDF and HTML template have consistent hyperlink styling
+
+---
+Task ID: 14
+Agent: Main Agent
+Task: Fix A4 page text overflow - words going out of page boundaries
+
+Work Log:
+- Fixed HTML preview template (generate-pdf/route.ts):
+  - Added `min-width: 0` and `overflow: hidden` to `.field` grid items (critical for CSS grid text containment)
+  - Added `overflow-wrap: break-word`, `word-break: break-word`, `hyphens: auto` to `.field-value` for proper text wrapping
+  - Added `max-height: 32px` with `overflow: hidden` on `.field-value` to prevent text from growing cells too tall
+  - Added `white-space: nowrap`, `overflow: hidden`, `text-overflow: ellipsis` on `.field-label` for long labels
+  - Made entire layout more compact: reduced header/subheader padding, logo size, font sizes, margins
+  - Reduced section margins from 12px to 8px, field padding from 7px 12px to 6px 10px
+  - Added `overflow: hidden` on `.page-body` to enforce A4 boundary
+- Fixed jsPDF download (success-page.tsx):
+  - Reduced margin from 14mm to 12mm for more content space
+  - Reduced header band from 34mm to 28mm, sub-header from 16mm to 13mm
+  - Reduced field row height from 11mm to 9mm
+  - Added `maxContentY` boundary check (ph - footerH - 2) to prevent content from overlapping footer
+  - Added `truncText()` helper function that properly truncates both labels and values to fit cell width
+  - Made `drawFieldRow` and `drawSection` skip rendering if they would overflow page
+  - Added boundary checks before signature section and disclaimer to avoid overflow
+  - Reduced all font sizes proportionally (10→9 for section titles, 9→8 for values, 6→5 for labels)
+  - Made footer band more compact (14mm → 12mm)
+
+Stage Summary:
+- Text no longer overflows A4 page boundaries in both HTML preview and PDF download
+- All values and labels are properly truncated with "..." if they exceed cell width
+- Layout is more compact while still professional and readable
+- Content fits on 1 A4 page with boundary checks preventing footer overlap
