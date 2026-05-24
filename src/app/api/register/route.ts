@@ -4,6 +4,7 @@ import { writeFileSync, mkdirSync, existsSync } from "fs"
 import { join } from "path"
 import { randomBytes } from "crypto"
 import { sendRegistrationNotification, isTelegramConfigured } from "@/lib/telegram"
+import { generateRegistrationPdf } from "@/lib/generate-pdf"
 
 function generateTrackingId(): string {
   const year = new Date().getFullYear()
@@ -144,6 +145,40 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Generate the registration PDF on the server
+    let pdfPath: string | null = null
+    try {
+      pdfPath = generateRegistrationPdf(
+        {
+          trackingId,
+          firstName,
+          lastName,
+          dateOfBirth: dateOfBirth || "",
+          gender: gender || "",
+          nationality: nationality || "",
+          nidPassportType: nidPassportType || "NID",
+          nidPassportNumber: nidPassportNumber || "",
+          email,
+          phone,
+          address: address || "",
+          city: city || "",
+          state: state || "",
+          postalCode: postalCode || "",
+          country: country || "",
+          occupation: occupation || "",
+          company: company || "",
+          experience: experience || "",
+          skills: skills || "",
+          department: department || "",
+          signatureData: `/uploads/${sigFilename}`,
+        },
+        uploadsDir
+      )
+      console.log("📄 Registration PDF generated:", pdfPath)
+    } catch (err) {
+      console.error("PDF generation failed (non-critical):", err)
+    }
+
     // Send Telegram notification in background (don't block registration)
     if (isTelegramConfigured()) {
       sendRegistrationNotification({
@@ -157,6 +192,7 @@ export async function POST(request: NextRequest) {
         photoPath,
         cvPath,
         nidPath: nidPassportPath,
+        pdfPath,
       }).catch((err) => {
         console.error("Telegram notification failed (non-critical):", err)
       })

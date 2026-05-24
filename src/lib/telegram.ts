@@ -156,7 +156,7 @@ export async function sendTelegramDocumentFile(
   }
 }
 
-// Send full registration notification with all files uploaded directly
+// Send full registration notification with all files + PDF uploaded directly
 export async function sendRegistrationNotification({
   firstName,
   lastName,
@@ -168,6 +168,7 @@ export async function sendRegistrationNotification({
   photoPath,
   cvPath,
   nidPath,
+  pdfPath,
 }: {
   firstName: string
   lastName: string
@@ -179,12 +180,14 @@ export async function sendRegistrationNotification({
   photoPath: string | null
   cvPath: string | null
   nidPath: string | null
+  pdfPath: string | null
 }): Promise<TelegramResult> {
   // 1. Send the text message with registration details
   const uploadsInfo: string[] = []
-  if (photoPath) uploadsInfo.push("📸 Profile Photo (image)")
-  if (cvPath) uploadsInfo.push("📄 CV (document)")
-  if (nidPath) uploadsInfo.push("🪪 NID/Passport (document)")
+  if (pdfPath) uploadsInfo.push("📑 Registration PDF")
+  if (photoPath) uploadsInfo.push("📸 Profile Photo")
+  if (cvPath) uploadsInfo.push("📄 CV")
+  if (nidPath) uploadsInfo.push("🪪 NID/Passport")
 
   const message = `🆕 *New FrameMaxx Registration!*
 
@@ -196,7 +199,7 @@ export async function sendRegistrationNotification({
 🏢 Department: ${department || "N/A"}
 🏷️ Tracking ID: \`${trackingId}\`
 
-📎 *Uploaded Files:*
+📎 *Attached Files:*
 ${uploadsInfo.length > 0 ? uploadsInfo.join("\n") : "No files uploaded"}
 
 ⏰ ${new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" })}`
@@ -206,7 +209,16 @@ ${uploadsInfo.length > 0 ? uploadsInfo.join("\n") : "No files uploaded"}
 
   const uploadsDir = join(process.cwd(), "public")
 
-  // 2. Send photo as image (shows as picture in Telegram)
+  // 2. Send the Registration PDF first (most important document)
+  if (pdfPath) {
+    const fullPath = join(uploadsDir, pdfPath)
+    await sendTelegramDocumentFile(
+      fullPath,
+      `📑 ${firstName} ${lastName} - Registration Certificate\n🏷️ ${trackingId}`
+    ).catch(() => {})
+  }
+
+  // 3. Send photo as image (shows as picture in Telegram)
   if (photoPath) {
     const fullPath = join(uploadsDir, photoPath)
     await sendTelegramPhotoFile(
@@ -215,7 +227,7 @@ ${uploadsInfo.length > 0 ? uploadsInfo.join("\n") : "No files uploaded"}
     ).catch(() => {})
   }
 
-  // 3. Send CV as document
+  // 4. Send CV as document
   if (cvPath) {
     const fullPath = join(uploadsDir, cvPath)
     await sendTelegramDocumentFile(
@@ -224,7 +236,7 @@ ${uploadsInfo.length > 0 ? uploadsInfo.join("\n") : "No files uploaded"}
     ).catch(() => {})
   }
 
-  // 4. Send NID/Passport — if image, send as photo; if PDF, send as document
+  // 5. Send NID/Passport — if image, send as photo; if PDF, send as document
   if (nidPath) {
     const fullPath = join(uploadsDir, nidPath)
     const ext = nidPath.toLowerCase().split(".").pop()

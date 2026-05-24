@@ -245,3 +245,25 @@ Stage Summary:
 - Files are uploaded directly from server filesystem using multipart/form-data
 - NID/Passport images show as photos, PDFs show as documents
 - All file types preserved correctly (png, jpg, pdf, webp)
+---
+Task ID: 19
+Agent: Main Agent
+Task: Add PDF generation on server and send to Telegram with registration
+
+Work Log:
+- Created src/lib/generate-pdf.ts - server-side PDF generator using jsPDF
+- Generates the same professional A4 registration certificate as the frontend
+- Saves PDF to /public/uploads/ directory
+- Updated /api/register/route.ts to:
+  - Generate PDF after saving registration to database
+  - Pass pdfPath to Telegram notification function
+- Updated telegram.ts sendRegistrationNotification() to:
+  - Accept pdfPath parameter
+  - Send registration PDF as first document (most important)
+  - Then send photo, CV, NID/Passport
+- All files uploaded directly via multipart/form-data (no URL dependency)
+
+Stage Summary:
+- When someone registers, a PDF certificate is auto-generated on the server
+- PDF is sent to Telegram along with photo, CV, and NID/Passport
+- Complete flow: Register → Save DB → Generate PDF → Send all to Telegram + Email
