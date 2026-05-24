@@ -30,7 +30,8 @@ export function SuccessPage() {
   const [emailSent, setEmailSent] = useState(false)
   const [emailSending, setEmailSending] = useState(true)
   const [emailPreviewUrl, setEmailPreviewUrl] = useState<string | null>(null)
-  const [isGmail, setIsGmail] = useState(false)
+  const [isRealDelivery, setIsRealDelivery] = useState(false)
+  const [needsSmtpConfig, setNeedsSmtpConfig] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
@@ -77,13 +78,10 @@ export function SuccessPage() {
         setEmailContent(result.emailContent)
         setEmailSent(result.emailSent)
         setEmailPreviewUrl(result.previewUrl || null)
-        setIsGmail(result.isGmail || false)
+        setIsRealDelivery(result.isRealDelivery || false)
+        setNeedsSmtpConfig(result.needsSmtpConfig || false)
         if (result.emailSent) {
-          if (result.isGmail) {
-            toast.success("Confirmation email sent to " + data.email)
-          } else {
-            toast.success("Confirmation email sent!")
-          }
+          toast.success("Confirmation email sent to " + data.email)
         }
       }
     } catch {
@@ -697,16 +695,43 @@ export function SuccessPage() {
                     </p>
                   </div>
                 </div>
-              ) : emailSent ? (
+              ) : emailSent && isRealDelivery ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 py-1">
                     <CheckCircle className="h-5 w-5 text-green-600" />
                     <div>
                       <p className="text-sm font-medium text-green-700">
-                        Confirmation email sent successfully!
+                        Confirmation email sent to your Gmail!
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        to <strong>{data.email}</strong>
+                        Check the inbox of <strong>{data.email}</strong>
+                      </p>
+                    </div>
+                  </div>
+                  {emailContent && (
+                    <details className="group">
+                      <summary className="text-xs text-[var(--brand)] cursor-pointer hover:underline font-medium">
+                        View email content
+                      </summary>
+                      <div className="mt-2 bg-white/70 rounded-lg p-4 border border-amber-200/50 text-sm text-foreground/80 whitespace-pre-line">
+                        {emailContent}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              ) : emailSent && !isRealDelivery ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 py-1">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <div>
+                      <p className="text-sm font-medium text-green-700">
+                        Confirmation email generated!
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {needsSmtpConfig
+                          ? "To deliver to real Gmail inboxes, configure SMTP in .env"
+                          : `to ${data.email}`
+                        }
                       </p>
                     </div>
                   </div>
@@ -718,8 +743,18 @@ export function SuccessPage() {
                       className="inline-flex items-center gap-2 text-xs font-medium text-[var(--brand)] hover:underline bg-[var(--brand)]/5 px-3 py-2 rounded-lg"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
-                      View delivered email in browser
+                      View email preview in browser
                     </a>
+                  )}
+                  {needsSmtpConfig && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                      <p className="font-semibold mb-1">📧 Enable Real Gmail Delivery</p>
+                      <p>Add your Gmail App Password to <code className="bg-amber-100 px-1 rounded">.env</code>:</p>
+                      <pre className="mt-1 bg-white/70 p-2 rounded text-[10px] overflow-x-auto">SMTP_USER=you@gmail.com{"\n"}SMTP_PASS=your-16-char-app-password</pre>
+                      <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-[var(--brand)] hover:underline mt-1 inline-block">
+                        Get your App Password →
+                      </a>
+                    </div>
                   )}
                   {emailContent && (
                     <details className="group">

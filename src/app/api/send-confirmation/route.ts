@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import ZAI from "z-ai-web-dev-sdk"
 import {
   sendEmail,
-  isSmtpConfigured,
+  isRealDeliveryConfigured,
   generateConfirmationEmailHtml,
   generateConfirmationEmailText,
 } from "@/lib/email"
@@ -58,7 +58,7 @@ Keep it concise and professional.`,
       emailContent,
     })
 
-    // Send the email (uses Gmail if configured, otherwise auto-creates Ethereal test account)
+    // Send the email (uses real SMTP if configured, otherwise Ethereal test server)
     const result = await sendEmail({
       to: email,
       subject: `FrameMaxx Registration Confirmation - ${trackingId}`,
@@ -66,16 +66,15 @@ Keep it concise and professional.`,
       html: htmlContent,
     })
 
-    const isGmail = isSmtpConfigured()
-
     return NextResponse.json({
       success: true,
       emailContent,
       trackingId,
       emailSent: result.success,
       emailMessage: result.message,
-      isGmail,
+      isRealDelivery: result.isRealDelivery ?? false,
       previewUrl: result.previewUrl || null,
+      needsSmtpConfig: !isRealDeliveryConfigured(),
     })
   } catch (error) {
     console.error("Email confirmation error:", error)
