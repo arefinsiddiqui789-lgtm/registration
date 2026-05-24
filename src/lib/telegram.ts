@@ -1,18 +1,8 @@
 /**
  * Telegram Bot Notification
  *
- * Sends registration details + files (photo, CV, NID) directly to your Telegram
- * using multipart/form-data file uploads — files are sent directly from the server,
- * no public URLs needed!
- *
- * Setup (one-time, 2 minutes):
- * 1. Open Telegram, search for @BotFather
- * 2. Send /newbot → follow prompts → get your Bot Token
- * 3. Send a message to your new bot
- * 4. Visit https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates to get your Chat ID
- * 5. Add both to .env: TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID
- *
- * 100% FREE, unlimited messages, works instantly!
+ * Sends registration details + files (photo, CV, NID, PDF) directly to your Telegram
+ * using multipart/form-data file uploads via Buffer — works on both local and Vercel!
  */
 
 import { readFileSync } from "fs"
@@ -72,9 +62,10 @@ export async function sendTelegramMessage(text: string): Promise<TelegramResult>
   }
 }
 
-// Send a photo by uploading the file directly from the server filesystem
-export async function sendTelegramPhotoFile(
-  filePath: string,
+// Send a photo from a Buffer (works on Vercel and local)
+export async function sendTelegramPhotoBuffer(
+  buffer: Buffer,
+  filename: string,
   caption: string
 ): Promise<TelegramResult> {
   if (!isTelegramConfigured()) {
@@ -82,12 +73,9 @@ export async function sendTelegramPhotoFile(
   }
 
   try {
-    const fileBuffer = readFileSync(filePath)
-    const filename = filePath.split("/").pop() || "photo.png"
-
     const formData = new FormData()
     formData.append("chat_id", getChatId())
-    formData.append("photo", new Blob([fileBuffer]), filename)
+    formData.append("photo", new Blob([buffer]), filename)
     formData.append("caption", caption)
     formData.append("parse_mode", "Markdown")
 
@@ -114,9 +102,10 @@ export async function sendTelegramPhotoFile(
   }
 }
 
-// Send a document (PDF, etc.) by uploading the file directly from the server filesystem
-export async function sendTelegramDocumentFile(
-  filePath: string,
+// Send a document from a Buffer (works on Vercel and local)
+export async function sendTelegramDocumentBuffer(
+  buffer: Buffer,
+  filename: string,
   caption: string
 ): Promise<TelegramResult> {
   if (!isTelegramConfigured()) {
@@ -124,12 +113,9 @@ export async function sendTelegramDocumentFile(
   }
 
   try {
-    const fileBuffer = readFileSync(filePath)
-    const filename = filePath.split("/").pop() || "document.pdf"
-
     const formData = new FormData()
     formData.append("chat_id", getChatId())
-    formData.append("document", new Blob([fileBuffer]), filename)
+    formData.append("document", new Blob([buffer]), filename)
     formData.append("caption", caption)
     formData.append("parse_mode", "Markdown")
 
@@ -156,7 +142,27 @@ export async function sendTelegramDocumentFile(
   }
 }
 
-// Send full registration notification with all files + PDF uploaded directly
+// Send a photo from file path (local only)
+async function sendTelegramPhotoFile(
+  filePath: string,
+  caption: string
+): Promise<TelegramResult> {
+  const buffer = readFileSync(filePath)
+  const filename = filePath.split("/").pop() || "photo.png"
+  return sendTelegramPhotoBuffer(buffer, filename, caption)
+}
+
+// Send a document from file path (local only)
+async function sendTelegramDocumentFile(
+  filePath: string,
+  caption: string
+): Promise<TelegramResult> {
+  const buffer = readFileSync(filePath)
+  const filename = filePath.split("/").pop() || "document.pdf"
+  return sendTelegramDocumentBuffer(buffer, filename, caption)
+}
+
+// Send full registration notification — supports both Buffer (Vercel) and file paths (local)
 export async function sendRegistrationNotification({
   firstName,
   lastName,
@@ -165,10 +171,16 @@ export async function sendRegistrationNotification({
   trackingId,
   department,
   occupation,
+  photoBuffer,
+  photoExt,
+  cvBuffer,
+  cvExt,
+  nidBuffer,
+  nidExt,
+  pdfBuffer,
   photoPath,
   cvPath,
   nidPath,
-  pdfPath,
 }: {
   firstName: string
   lastName: string
@@ -177,17 +189,23 @@ export async function sendRegistrationNotification({
   trackingId: string
   department: string
   occupation: string
-  photoPath: string | null
-  cvPath: string | null
-  nidPath: string | null
-  pdfPath: string | null
+  photoBuffer: Buffer | null
+  photoExt: string
+  cvBuffer: Buffer | null
+  cvExt: string
+  nidBuffer: Buffer | null
+  nidExt: string
+  pdfBuffer: Buffer | null
+  photoPath?: string | null
+  cvPath?: string | null
+  nidPath?: string | null
 }): Promise<TelegramResult> {
   // 1. Send the text message with registration details
   const uploadsInfo: string[] = []
-  if (pdfPath) uploadsInfo.push("📑 Registration PDF")
-  if (photoPath) uploadsInfo.push("📸 Profile Photo")
-  if (cvPath) uploadsInfo.push("📄 CV")
-  if (nidPath) uploadsInfo.push("🪪 NID/Passport")
+  if (pdfBuffer) uploadsInfo.push("📑 Registration PDF")
+  if (photoBuffer || photoPath) uploadsInfo.push("📸 Profile Photo")
+  if (cvBuffer || cvPath) uploadsInfo.push("📄 CV")
+  if (nidBuffer || nidPath) uploadsInfo.push("🪪 NID/Passport")
 
   const message = `🆕 *New FrameMaxx Registration!*
 
@@ -207,20 +225,24 @@ ${uploadsInfo.length > 0 ? uploadsInfo.join("\n") : "No files uploaded"}
   const textResult = await sendTelegramMessage(message)
   if (!textResult.success) return textResult
 
-  const uploadsDir = join(process.cwd(), "public")
-
-  // 2. Send the Registration PDF first (most important document)
-  if (pdfPath) {
-    const fullPath = join(uploadsDir, pdfPath)
-    await sendTelegramDocumentFile(
-      fullPath,
+  // 2. Send the Registration PDF (most important)
+  if (pdfBuffer) {
+    await sendTelegramDocumentBuffer(
+      pdfBuffer,
+      `${trackingId}-registration.pdf`,
       `📑 ${firstName} ${lastName} - Registration Certificate\n🏷️ ${trackingId}`
     ).catch(() => {})
   }
 
-  // 3. Send photo as image (shows as picture in Telegram)
-  if (photoPath) {
-    const fullPath = join(uploadsDir, photoPath)
+  // 3. Send photo as image
+  if (photoBuffer) {
+    await sendTelegramPhotoBuffer(
+      photoBuffer,
+      `${trackingId}-photo.${photoExt}`,
+      `📸 ${firstName} ${lastName} - Profile Photo\n🏷️ ${trackingId}`
+    ).catch(() => {})
+  } else if (photoPath) {
+    const fullPath = join(process.cwd(), "public", photoPath)
     await sendTelegramPhotoFile(
       fullPath,
       `📸 ${firstName} ${lastName} - Profile Photo\n🏷️ ${trackingId}`
@@ -228,17 +250,38 @@ ${uploadsInfo.length > 0 ? uploadsInfo.join("\n") : "No files uploaded"}
   }
 
   // 4. Send CV as document
-  if (cvPath) {
-    const fullPath = join(uploadsDir, cvPath)
+  if (cvBuffer) {
+    await sendTelegramDocumentBuffer(
+      cvBuffer,
+      `${trackingId}-cv.${cvExt}`,
+      `📄 ${firstName} ${lastName} - CV\n🏷️ ${trackingId}`
+    ).catch(() => {})
+  } else if (cvPath) {
+    const fullPath = join(process.cwd(), "public", cvPath)
     await sendTelegramDocumentFile(
       fullPath,
       `📄 ${firstName} ${lastName} - CV\n🏷️ ${trackingId}`
     ).catch(() => {})
   }
 
-  // 5. Send NID/Passport — if image, send as photo; if PDF, send as document
-  if (nidPath) {
-    const fullPath = join(uploadsDir, nidPath)
+  // 5. Send NID/Passport
+  if (nidBuffer) {
+    const isImage = ["png", "jpg", "jpeg", "webp"].includes(nidExt)
+    if (isImage) {
+      await sendTelegramPhotoBuffer(
+        nidBuffer,
+        `${trackingId}-nid-passport.${nidExt}`,
+        `🪪 ${firstName} ${lastName} - NID/Passport\n🏷️ ${trackingId}`
+      ).catch(() => {})
+    } else {
+      await sendTelegramDocumentBuffer(
+        nidBuffer,
+        `${trackingId}-nid-passport.${nidExt}`,
+        `🪪 ${firstName} ${lastName} - NID/Passport\n🏷️ ${trackingId}`
+      ).catch(() => {})
+    }
+  } else if (nidPath) {
+    const fullPath = join(process.cwd(), "public", nidPath)
     const ext = nidPath.toLowerCase().split(".").pop()
     if (ext === "png" || ext === "jpg" || ext === "jpeg" || ext === "webp") {
       await sendTelegramPhotoFile(

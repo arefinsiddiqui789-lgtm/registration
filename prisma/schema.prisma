@@ -12,29 +12,29 @@ model Registration {
   trackingId        String   @unique
   firstName         String
   lastName          String
-  dateOfBirth       String
-  gender            String
-  nationality       String
-  nidPassportType   String   // "NID" or "Passport"
-  nidPassportNumber String
+  dateOfBirth       String   @default("")
+  gender            String   @default("")
+  nationality       String   @default("")
+  nidPassportType   String   @default("NID")
+  nidPassportNumber String   @default("")
   email             String
   phone             String
-  address           String
-  city              String
-  state             String
-  postalCode        String
-  country           String
-  occupation        String
-  company           String
-  experience        String
-  skills            String
-  department        String
+  address           String   @default("")
+  city              String   @default("")
+  state             String   @default("")
+  postalCode        String   @default("")
+  country           String   @default("")
+  occupation        String   @default("")
+  company           String   @default("")
+  experience        String   @default("")
+  skills            String   @default("")
+  department        String   @default("")
   photoPath         String?
   cvPath            String?
   nidPassportPath   String?
-  signatureData     String   // base64 signature image
-  agreeToTerms      Boolean
-  agreeToPrivacy    Boolean
+  signatureData     String   @default("")
+  agreeToTerms      Boolean  @default(false)
+  agreeToPrivacy    Boolean  @default(false)
   status            String   @default("pending")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

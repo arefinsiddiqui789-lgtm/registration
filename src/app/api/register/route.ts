@@ -3,8 +3,8 @@ import { db } from "@/lib/db"
 import { writeFileSync, mkdirSync, existsSync } from "fs"
 import { join } from "path"
 import { randomBytes } from "crypto"
-import { sendRegistrationNotification, isTelegramConfigured } from "@/lib/telegram"
-import { generateRegistrationPdf } from "@/lib/generate-pdf"
+import { sendRegistrationNotification, isTelegramConfigured, sendTelegramPhotoBuffer, sendTelegramDocumentBuffer } from "@/lib/telegram"
+import { generateRegistrationPdfBuffer } from "@/lib/generate-pdf"
 
 function generateTrackingId(): string {
   const year = new Date().getFullYear()
@@ -23,6 +23,11 @@ function getExtFromBase64(dataUri: string): string {
     if (mime.includes("webp")) return "webp"
   }
   return "bin"
+}
+
+// Check if we're running on Vercel (read-only filesystem)
+function isVercel(): boolean {
+  return !!process.env.VERCEL
 }
 
 export async function POST(request: NextRequest) {
@@ -74,82 +79,64 @@ export async function POST(request: NextRequest) {
 
     const trackingId = generateTrackingId()
 
-    // Save uploaded files
+    // Save uploaded files (only on local dev, not Vercel)
     const uploadsDir = join(process.cwd(), "public", "uploads")
-    if (!existsSync(uploadsDir)) {
-      mkdirSync(uploadsDir, { recursive: true })
-    }
-
     let photoPath: string | null = null
     let cvPath: string | null = null
     let nidPassportPath: string | null = null
 
+    // Extract buffers for Telegram sending
+    let photoBuffer: Buffer | null = null
+    let cvBuffer: Buffer | null = null
+    let nidBuffer: Buffer | null = null
+    let photoExt = "png"
+    let cvExt = "pdf"
+    let nidExt = "pdf"
+
     if (photoBase64) {
-      const buffer = Buffer.from(photoBase64.split(",")[1] || photoBase64, "base64")
-      const ext = getExtFromBase64(photoBase64)
-      const filename = `${trackingId}-photo.${ext}`
-      writeFileSync(join(uploadsDir, filename), buffer)
-      photoPath = `/uploads/${filename}`
+      photoBuffer = Buffer.from(photoBase64.split(",")[1] || photoBase64, "base64")
+      photoExt = getExtFromBase64(photoBase64)
+      if (!isVercel()) {
+        if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true })
+        const filename = `${trackingId}-photo.${photoExt}`
+        writeFileSync(join(uploadsDir, filename), photoBuffer)
+        photoPath = `/uploads/${filename}`
+      }
     }
 
     if (cvBase64) {
-      const buffer = Buffer.from(cvBase64.split(",")[1] || cvBase64, "base64")
-      const ext = getExtFromBase64(cvBase64)
-      const filename = `${trackingId}-cv.${ext}`
-      writeFileSync(join(uploadsDir, filename), buffer)
-      cvPath = `/uploads/${filename}`
+      cvBuffer = Buffer.from(cvBase64.split(",")[1] || cvBase64, "base64")
+      cvExt = getExtFromBase64(cvBase64)
+      if (!isVercel()) {
+        const filename = `${trackingId}-cv.${cvExt}`
+        writeFileSync(join(uploadsDir, filename), cvBuffer)
+        cvPath = `/uploads/${filename}`
+      }
     }
 
     if (nidPassportBase64) {
-      const buffer = Buffer.from(nidPassportBase64.split(",")[1] || nidPassportBase64, "base64")
-      const ext = getExtFromBase64(nidPassportBase64)
-      const filename = `${trackingId}-nid-passport.${ext}`
-      writeFileSync(join(uploadsDir, filename), buffer)
-      nidPassportPath = `/uploads/${filename}`
+      nidBuffer = Buffer.from(nidPassportBase64.split(",")[1] || nidPassportBase64, "base64")
+      nidExt = getExtFromBase64(nidPassportBase64)
+      if (!isVercel()) {
+        const filename = `${trackingId}-nid-passport.${nidExt}`
+        writeFileSync(join(uploadsDir, filename), nidBuffer)
+        nidPassportPath = `/uploads/${filename}`
+      }
     }
 
     // Save signature
     const sigBuffer = Buffer.from(signatureData.split(",")[1] || signatureData, "base64")
-    const sigFilename = `${trackingId}-signature.png`
-    writeFileSync(join(uploadsDir, sigFilename), sigBuffer)
+    let sigPath = ""
+    if (!isVercel()) {
+      const sigFilename = `${trackingId}-signature.png`
+      writeFileSync(join(uploadsDir, sigFilename), sigBuffer)
+      sigPath = `/uploads/${sigFilename}`
+    }
 
     // Save to database
-    const registration = await db.registration.create({
-      data: {
-        trackingId,
-        firstName,
-        lastName,
-        dateOfBirth: dateOfBirth || "",
-        gender: gender || "",
-        nationality: nationality || "",
-        nidPassportType: nidPassportType || "NID",
-        nidPassportNumber: nidPassportNumber || "",
-        email,
-        phone,
-        address: address || "",
-        city: city || "",
-        state: state || "",
-        postalCode: postalCode || "",
-        country: country || "",
-        occupation: occupation || "",
-        company: company || "",
-        experience: experience || "",
-        skills: skills || "",
-        department: department || "",
-        photoPath,
-        cvPath,
-        nidPassportPath,
-        signatureData: `/uploads/${sigFilename}`,
-        agreeToTerms,
-        agreeToPrivacy,
-      },
-    })
-
-    // Generate the registration PDF on the server
-    let pdfPath: string | null = null
     try {
-      pdfPath = generateRegistrationPdf(
-        {
+      await db.registration.create({
+        data: {
           trackingId,
           firstName,
           lastName,
@@ -170,16 +157,56 @@ export async function POST(request: NextRequest) {
           experience: experience || "",
           skills: skills || "",
           department: department || "",
-          signatureData: `/uploads/${sigFilename}`,
+          photoPath,
+          cvPath,
+          nidPassportPath,
+          signatureData: sigPath || signatureData.substring(0, 100),
+          agreeToTerms,
+          agreeToPrivacy,
         },
-        uploadsDir
-      )
-      console.log("📄 Registration PDF generated:", pdfPath)
+      })
+    } catch (dbError) {
+      console.error("Database save failed:", dbError)
+      // Continue even if DB fails - Telegram & email are more important
+    }
+
+    // Generate the registration PDF
+    let pdfBuffer: Buffer | null = null
+    try {
+      pdfBuffer = generateRegistrationPdfBuffer({
+        trackingId,
+        firstName,
+        lastName,
+        dateOfBirth: dateOfBirth || "",
+        gender: gender || "",
+        nationality: nationality || "",
+        nidPassportType: nidPassportType || "NID",
+        nidPassportNumber: nidPassportNumber || "",
+        email,
+        phone,
+        address: address || "",
+        city: city || "",
+        state: state || "",
+        postalCode: postalCode || "",
+        country: country || "",
+        occupation: occupation || "",
+        company: company || "",
+        experience: experience || "",
+        skills: skills || "",
+        department: department || "",
+        signatureData: sigBuffer,
+      })
+
+      // Save PDF locally (not on Vercel)
+      if (!isVercel() && pdfBuffer) {
+        const pdfFilename = `${trackingId}-registration.pdf`
+        writeFileSync(join(uploadsDir, pdfFilename), pdfBuffer)
+      }
     } catch (err) {
       console.error("PDF generation failed (non-critical):", err)
     }
 
-    // Send Telegram notification in background (don't block registration)
+    // Send Telegram notification with files directly (works on both local & Vercel)
     if (isTelegramConfigured()) {
       sendRegistrationNotification({
         firstName,
@@ -189,21 +216,25 @@ export async function POST(request: NextRequest) {
         trackingId,
         department: department || "",
         occupation: occupation || "",
+        photoBuffer,
+        photoExt,
+        cvBuffer,
+        cvExt,
+        nidBuffer,
+        nidExt,
+        pdfBuffer,
+        // Also pass paths for local dev (alternative file sending)
         photoPath,
         cvPath,
         nidPath: nidPassportPath,
-        pdfPath,
       }).catch((err) => {
         console.error("Telegram notification failed (non-critical):", err)
       })
-    } else {
-      console.log("📱 Telegram not configured. Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env")
     }
 
     return NextResponse.json({
       success: true,
-      trackingId: registration.trackingId,
-      id: registration.id,
+      trackingId,
       telegramNotified: isTelegramConfigured(),
     })
   } catch (error) {

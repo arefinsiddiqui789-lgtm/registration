@@ -1,12 +1,10 @@
 /**
  * Server-side PDF generator for FrameMaxx Registration
  * Uses jsPDF to create a professional A4 registration certificate PDF
- * and saves it to the uploads directory.
+ * Returns a Buffer for sending to Telegram or saving to disk.
  */
 
 import jsPDF from "jspdf"
-import { writeFileSync, readFileSync } from "fs"
-import { join } from "path"
 import { LOGO_BASE64 } from "@/lib/logo-base64"
 
 interface RegistrationData {
@@ -30,13 +28,10 @@ interface RegistrationData {
   experience: string
   skills: string
   department: string
-  signatureData: string // path like /uploads/FMX-xxx-signature.png
+  signatureData: Buffer | string // Buffer on Vercel, path string on local
 }
 
-export function generateRegistrationPdf(
-  data: RegistrationData,
-  uploadsDir: string
-): string {
+export function generateRegistrationPdfBuffer(data: RegistrationData): Buffer {
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -64,7 +59,6 @@ export function generateRegistrationPdf(
   doc.setFillColor(...cDark)
   doc.rect(0, 0, pw, 28, "F")
 
-  // Logo
   try {
     doc.addImage(LOGO_BASE64, "PNG", m, 4, 18, 18)
   } catch {
@@ -76,25 +70,21 @@ export function generateRegistrationPdf(
     doc.text("FM", m + 9, 15, { align: "center" })
   }
 
-  // Brand name
   doc.setTextColor(...cWhite)
   doc.setFontSize(18)
   doc.setFont("helvetica", "bold")
   doc.text("FrameMaxx", m + 22, 13)
 
-  // Brand tagline
   doc.setTextColor(148, 163, 184)
   doc.setFontSize(6)
   doc.setFont("helvetica", "normal")
   doc.text("MARKETING AGENCY", m + 22, 18)
 
-  // Document label (right side)
   doc.setTextColor(...cMuted)
   doc.setFontSize(6)
   doc.setFont("helvetica", "normal")
   doc.text("OFFICIAL DOCUMENT", pw - m, 10, { align: "right" })
 
-  // Document title
   doc.setTextColor(...cWhite)
   doc.setFontSize(11)
   doc.setFont("helvetica", "bold")
@@ -104,7 +94,6 @@ export function generateRegistrationPdf(
   doc.setFillColor(...cSubDark)
   doc.rect(0, 28, pw, 13, "F")
 
-  // Tracking ID chip
   doc.setDrawColor(50, 65, 100)
   doc.setLineWidth(0.3)
   doc.setFillColor(30, 42, 70)
@@ -271,18 +260,16 @@ export function generateRegistrationPdf(
     doc.setLineWidth(0.3)
     doc.line(m, y + 12, m + 50, y + 12)
 
-    // Add signature image
-    if (data.signatureData && data.signatureData.startsWith("/uploads/")) {
+    // Add signature image from buffer
+    if (data.signatureData instanceof Buffer && data.signatureData.length > 0) {
       try {
-        const sigBuf = readFileSync(join(process.cwd(), "public", data.signatureData))
-        const sigBase64 = `data:image/png;base64,${sigBuf.toString("base64")}`
+        const sigBase64 = `data:image/png;base64,${data.signatureData.toString("base64")}`
         doc.addImage(sigBase64, "PNG", m + 4, y - 1, 40, 13)
       } catch {
         // Skip signature image if it fails
       }
     }
 
-    // Name under line
     doc.setTextColor(...cText)
     doc.setFontSize(7)
     doc.setFont("helvetica", "bold")
@@ -293,7 +280,6 @@ export function generateRegistrationPdf(
     doc.setFont("helvetica", "normal")
     doc.text("Applicant Signature", m, y + 19)
 
-    // Date on right side
     const now = new Date()
     const dateStr = now.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
     const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
@@ -362,11 +348,6 @@ export function generateRegistrationPdf(
   doc.setFontSize(5)
   doc.text(`Generated ${dateStr2} at ${timeStr2}  \u2022  Page 1 of 1`, pw - m, footerY + 4.5, { align: "right" })
 
-  // Save PDF to file
-  const pdfFilename = `${data.trackingId}-registration.pdf`
-  const pdfPath = join(uploadsDir, pdfFilename)
-  const pdfBuffer = Buffer.from(doc.output("arraybuffer"))
-  writeFileSync(pdfPath, pdfBuffer)
-
-  return `/uploads/${pdfFilename}`
+  // Return as Buffer
+  return Buffer.from(doc.output("arraybuffer"))
 }
