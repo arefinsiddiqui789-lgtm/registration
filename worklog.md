@@ -89,3 +89,28 @@ Stage Summary:
 - All content fits on exactly 1 A4 page in both preview and PDF
 - HTML preview uses flexbox to keep footer at bottom of A4 page
 - No more blurry text from html2canvas rasterization
+
+---
+Task ID: 13
+Agent: Main Agent
+Task: Add clickable hyperlinks to PDF document
+
+Work Log:
+- Added hyperlink detection function `getLinkUrl()` that identifies emails, phone numbers, and URLs
+- Created `drawValueWithLink()` helper that draws text with blue color + underline for linkable values and adds `doc.link()` clickable area
+- Email addresses get `mailto:` links, phone numbers get `tel:` links, URLs get direct links
+- Updated disclaimer section: support@framemaxx.com is now a clickable mailto: hyperlink with smart text wrapping
+- Added www.framemaxx.com clickable link below disclaimer box
+- Added www.framemaxx.com hyperlink in footer band with lighter blue color
+- Updated HTML template (generate-pdf/route.ts) with matching hyperlinks:
+  - Email field uses `<a href="mailto:...">` 
+  - Phone field uses `<a href="tel:...">`
+  - Disclaimer email uses `<a href="mailto:support@framemaxx.com">`
+  - Added www.framemaxx.com link in disclaimer and footer
+  - Added CSS styles for `.field-value a`, `.disclaimer-text a`, `.footer-right a` with blue color + underline
+
+Stage Summary:
+- PDF now has clickable hyperlinks for: email addresses, phone numbers, support email, website
+- All links show as blue underlined text for clear visual identification
+- HTML preview/print also has matching clickable links
+- Both jsPDF vector PDF and HTML template have consistent hyperlink styling
