@@ -526,9 +526,9 @@ export function SuccessPage() {
   if (!isSubmitted) return null
 
   return (
-    <div className="min-h-screen flex flex-col bg-muted/20">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#fef3c7" }}>
       {/* Header */}
-      <header className="sticky top-0 z-50 glass border-b border-border/50">
+      <header className="sticky top-0 z-50 border-b border-amber-200/50" style={{ backgroundColor: "#fde68a" }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Image
@@ -558,7 +558,7 @@ export function SuccessPage() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <Card className="glass border-border/50 shadow-xl mb-8">
+          <Card className="border-amber-200/60 shadow-xl mb-8" style={{ backgroundColor: "#f5e6b8" }}>
             <CardContent className="p-6 sm:p-8 text-center">
               <motion.div
                 initial={{ scale: 0, rotate: -20 }}
@@ -660,7 +660,7 @@ export function SuccessPage() {
             transition={{ delay: 0.3 }}
             className="mb-8"
           >
-            <Card className="glass border-border/50 shadow-lg">
+            <Card className="border-amber-200/60 shadow-lg" style={{ backgroundColor: "#f5e6b8" }}>
               <CardContent className="p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Mail className="h-5 w-5 text-[var(--brand)]" />
@@ -672,7 +672,7 @@ export function SuccessPage() {
                   A confirmation email has been sent to{" "}
                   <strong>{data.email}</strong>
                 </p>
-                <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border text-sm text-foreground/80 whitespace-pre-line">
+                <div className="bg-white/70 rounded-lg p-4 border border-amber-200/50 text-sm text-foreground/80 whitespace-pre-line">
                   {emailContent}
                 </div>
               </CardContent>
@@ -687,7 +687,7 @@ export function SuccessPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            <Card className="glass border-border/50 shadow-lg">
+            <Card className="border-amber-200/60 shadow-lg" style={{ backgroundColor: "#f5e6b8" }}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-foreground">
@@ -714,7 +714,7 @@ export function SuccessPage() {
                   </div>
                 </div>
                 {/* A4 Paper container */}
-                <div className="bg-slate-200 dark:bg-slate-800 rounded-xl p-4 sm:p-8 overflow-auto">
+                <div className="bg-amber-100/60 rounded-xl p-4 sm:p-8 overflow-auto">
                   <div className="mx-auto shadow-2xl" style={{ maxWidth: "794px" }}>
                     <iframe
                       ref={iframeRef}
@@ -742,7 +742,7 @@ export function SuccessPage() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t bg-muted/30 py-4 mt-auto">
+      <footer className="border-t border-amber-200/50 py-4 mt-auto" style={{ backgroundColor: "#fde68a" }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
           <Button
             variant="ghost"
