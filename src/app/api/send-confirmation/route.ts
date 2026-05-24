@@ -3,6 +3,7 @@ import ZAI from "z-ai-web-dev-sdk"
 import {
   sendEmail,
   isRealDeliveryConfigured,
+  isSmtpUserOnlyMissing,
   generateConfirmationEmailHtml,
   generateConfirmationEmailText,
 } from "@/lib/email"
@@ -58,7 +59,7 @@ Keep it concise and professional.`,
       emailContent,
     })
 
-    // Send the email (uses real SMTP if configured, otherwise Ethereal test server)
+    // Send the email via Gmail SMTP
     const result = await sendEmail({
       to: email,
       subject: `FrameMaxx Registration Confirmation - ${trackingId}`,
@@ -73,8 +74,8 @@ Keep it concise and professional.`,
       emailSent: result.success,
       emailMessage: result.message,
       isRealDelivery: result.isRealDelivery ?? false,
-      previewUrl: result.previewUrl || null,
       needsSmtpConfig: !isRealDeliveryConfigured(),
+      needsSmtpUser: isSmtpUserOnlyMissing(),
     })
   } catch (error) {
     console.error("Email confirmation error:", error)

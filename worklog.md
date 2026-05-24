@@ -179,3 +179,25 @@ Stage Summary:
 - UI shows real-time email sending status with 3 states
 - Graceful fallback when SMTP not configured (shows "pending delivery")
 - To activate: set SMTP_USER and SMTP_PASS in .env with Gmail App Password
+---
+Task ID: 16
+Agent: Main Agent
+Task: Configure Gmail App Password and update email system for real Gmail delivery
+
+Work Log:
+- User provided Gmail App Password: dlcz mzcg yrfp rvbx
+- Added SMTP_PASS to .env file with the provided app password
+- Removed Ethereal test email fallback entirely from email.ts
+- Rewrote email.ts to be Gmail-only SMTP (smtp.gmail.com:587)
+- Added isSmtpUserOnlyMissing() detection for when password is set but email address is missing
+- Updated API route to pass needsSmtpUser flag in response
+- Updated success page UI with clear blue info box showing "One more step — Add your Gmail address"
+- Removed unused ExternalLink import and emailPreviewUrl state
+- Lint passes clean, dev server compiles successfully
+
+Stage Summary:
+- App password is configured in .env (SMTP_PASS=dlcz mzcg yrfp rvbx)
+- SMTP_USER is still empty — needs the actual Gmail address (e.g., yourname@gmail.com)
+- Email system is now Gmail-only (no more Ethereal fallback)
+- Success page shows clear instructions when Gmail address is missing
+- Once SMTP_USER is added, emails will be delivered to real Gmail inboxes

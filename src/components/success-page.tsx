@@ -14,7 +14,6 @@ import {
   FileText,
   CheckCircle,
   AlertCircle,
-  ExternalLink,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -29,9 +28,9 @@ export function SuccessPage() {
   const [emailContent, setEmailContent] = useState<string | null>(null)
   const [emailSent, setEmailSent] = useState(false)
   const [emailSending, setEmailSending] = useState(true)
-  const [emailPreviewUrl, setEmailPreviewUrl] = useState<string | null>(null)
   const [isRealDelivery, setIsRealDelivery] = useState(false)
   const [needsSmtpConfig, setNeedsSmtpConfig] = useState(false)
+  const [needsSmtpUser, setNeedsSmtpUser] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
@@ -77,9 +76,9 @@ export function SuccessPage() {
       if (result.success) {
         setEmailContent(result.emailContent)
         setEmailSent(result.emailSent)
-        setEmailPreviewUrl(result.previewUrl || null)
         setIsRealDelivery(result.isRealDelivery || false)
         setNeedsSmtpConfig(result.needsSmtpConfig || false)
+        setNeedsSmtpUser(result.needsSmtpUser || false)
         if (result.emailSent) {
           toast.success("Confirmation email sent to " + data.email)
         }
@@ -735,17 +734,6 @@ export function SuccessPage() {
                       </p>
                     </div>
                   </div>
-                  {emailPreviewUrl && (
-                    <a
-                      href={emailPreviewUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-xs font-medium text-[var(--brand)] hover:underline bg-[var(--brand)]/5 px-3 py-2 rounded-lg"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      View email preview in browser
-                    </a>
-                  )}
                   {needsSmtpConfig && (
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
                       <p className="font-semibold mb-1">📧 Enable Real Gmail Delivery</p>
@@ -773,13 +761,23 @@ export function SuccessPage() {
                     <AlertCircle className="h-5 w-5 text-amber-500" />
                     <div>
                       <p className="text-sm font-medium text-amber-700">
-                        Email pending delivery
+                        {needsSmtpUser ? "Almost there! Just need your Gmail address" : "Email pending delivery"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Confirmation for <strong>{data.email}</strong> will be sent once email service is configured.
+                        {needsSmtpUser
+                          ? "Your App Password is set. Just add your Gmail address to SMTP_USER in .env"
+                          : `Confirmation for ${data.email} will be sent once email service is configured.`
+                        }
                       </p>
                     </div>
                   </div>
+                  {needsSmtpUser && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+                      <p className="font-semibold mb-1">📧 One more step — Add your Gmail address</p>
+                      <p>Your App Password is already configured! Just add your Gmail address to <code className="bg-blue-100 px-1 rounded">.env</code>:</p>
+                      <pre className="mt-1 bg-white/70 p-2 rounded text-[10px] overflow-x-auto">SMTP_USER=your-email@gmail.com</pre>
+                    </div>
+                  )}
                   {emailContent && (
                     <details className="group">
                       <summary className="text-xs text-[var(--brand)] cursor-pointer hover:underline font-medium">

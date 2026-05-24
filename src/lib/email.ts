@@ -1,47 +1,38 @@
 import nodemailer from "nodemailer"
 
-// Cache the Ethereal test account so we only create it once per server restart
-let etherealAccount: { user: string; pass: string; web: string } | null = null
+// Check if SMTP credentials are properly configured
+function isSmtpConfigured(): boolean {
+  const user = process.env.SMTP_USER?.trim() || ""
+  const pass = process.env.SMTP_PASS?.trim() || ""
 
-// Known placeholder values that should NOT be treated as real credentials
-const PLACEHOLDER_VALUES = new Set([
-  "your-email@gmail.com",
-  "your-16-char-app-password",
-  "your-email",
-  "your-password",
-  "changeme",
-  "xxx",
-])
-
-// Check if real SMTP credentials look valid
-function isRealSmtpConfigured(): boolean {
-  const user = process.env.SMTP_USER || ""
-  const pass = process.env.SMTP_PASS || ""
   if (!user || !pass) return false
-  if (PLACEHOLDER_VALUES.has(user) || PLACEHOLDER_VALUES.has(pass)) return false
-  if (user.includes("your-") || pass.includes("your-")) return false
+
+  // Detect placeholder values
+  const placeholders = [
+    "your-email@gmail.com",
+    "your-16-char-app-password",
+    "your-email",
+    "your-password",
+    "changeme",
+    "xxx",
+    "placeholder",
+  ]
+  if (placeholders.some((p) => user.toLowerCase().includes(p) || pass.toLowerCase().includes(p))) return false
+
   return true
 }
 
-// Create Ethereal test account (cached)
-async function getEtherealAccount() {
-  if (etherealAccount) return etherealAccount
-  try {
-    console.log("Creating Ethereal test email account...")
-    etherealAccount = await nodemailer.createTestAccount()
-    console.log("Ethereal account created:", etherealAccount.user)
-    return etherealAccount
-  } catch (err) {
-    console.error("Failed to create Ethereal account:", err)
-    return null
-  }
+// Check specifically if SMTP_USER (Gmail address) is missing
+function isSmtpUserMissing(): boolean {
+  const user = process.env.SMTP_USER?.trim() || ""
+  const pass = process.env.SMTP_PASS?.trim() || ""
+  return !user && !!pass // Has password but no email address
 }
 
 export interface SendEmailResult {
   success: boolean
   message: string
   messageId?: string
-  previewUrl?: string
   isRealDelivery?: boolean
 }
 
@@ -58,98 +49,77 @@ export async function sendEmail({
   text,
   html,
 }: SendEmailOptions): Promise<SendEmailResult> {
-  // ── Try Real SMTP first (Gmail, etc.) ────────────────────
-  if (isRealSmtpConfigured()) {
-    const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com"
-    const smtpPort = parseInt(process.env.SMTP_PORT || "587")
-    const smtpUser = process.env.SMTP_USER!
-    const smtpPass = process.env.SMTP_PASS!
-    const fromName = process.env.SMTP_FROM_NAME || "FrameMaxx Agency"
-
-    try {
-      const transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465,
-        auth: { user: smtpUser, pass: smtpPass },
-      })
-
-      const info = await transporter.sendMail({
-        from: `"${fromName}" <${smtpUser}>`,
-        to,
-        subject,
-        text,
-        html,
-      })
-
-      console.log("📧 Email delivered to", to, "via", smtpHost, "ID:", info.messageId)
-
+  // Check if SMTP is configured
+  if (!isSmtpConfigured()) {
+    if (isSmtpUserMissing()) {
       return {
-        success: true,
-        messageId: info.messageId,
-        isRealDelivery: true,
-        message: "Email delivered to inbox",
+        success: false,
+        message: "SMTP_USER (your Gmail address) is missing in .env file. Please add your Gmail address.",
       }
-    } catch (error: unknown) {
-      const err = error as Error
-      console.error("SMTP send failed:", err.message)
-
-      // If auth error, give helpful message instead of falling through to Ethereal
-      if (err.message.includes("EAUTH") || err.message.includes("535") || err.message.includes("Invalid login")) {
-        return {
-          success: false,
-          message: "SMTP authentication failed. Please check your Gmail App Password.",
-        }
-      }
-
-      // For other errors, fall through to Ethereal
-      console.warn("Falling back to Ethereal test email...")
+    }
+    return {
+      success: false,
+      message: "SMTP not configured. Please set SMTP_USER and SMTP_PASS in .env file.",
     }
   }
 
-  // ── Fallback: Ethereal test email ─────────────────────────
-  const account = await getEtherealAccount()
-  if (account) {
-    try {
-      const transporter = nodemailer.createTransport({
-        host: "smtp.ethereal.email",
-        port: 587,
-        secure: false,
-        auth: { user: account.user, pass: account.pass },
-      })
+  const smtpUser = process.env.SMTP_USER!.trim()
+  const smtpPass = process.env.SMTP_PASS!.trim()
+  const fromName = process.env.SMTP_FROM_NAME || "FrameMaxx Agency"
 
-      const info = await transporter.sendMail({
-        from: `"FrameMaxx Agency" <${account.user}>`,
-        to,
-        subject,
-        text,
-        html,
-      })
+  try {
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    })
 
-      const previewUrl = nodemailer.getTestMessageUrl(info)
-      console.log("📧 Email sent via Ethereal. Preview:", previewUrl)
+    const info = await transporter.sendMail({
+      from: `"${fromName}" <${smtpUser}>`,
+      to,
+      subject,
+      text,
+      html,
+    })
 
-      return {
-        success: true,
-        messageId: info.messageId,
-        previewUrl: previewUrl || undefined,
-        isRealDelivery: false,
-        message: "Email sent via test server",
-      }
-    } catch (err) {
-      console.error("Ethereal send failed:", err)
+    console.log("📧 Email delivered to", to, "via Gmail SMTP. ID:", info.messageId)
+
+    return {
+      success: true,
+      messageId: info.messageId,
+      isRealDelivery: true,
+      message: "Email delivered to inbox",
     }
-  }
+  } catch (error: unknown) {
+    const err = error as Error
+    console.error("Gmail SMTP send failed:", err.message)
 
-  return {
-    success: false,
-    message: "No email service available.",
+    if (err.message.includes("EAUTH") || err.message.includes("535") || err.message.includes("Invalid login")) {
+      return {
+        success: false,
+        message: "Gmail authentication failed. Please check your App Password in .env.",
+      }
+    }
+
+    return {
+      success: false,
+      message: `Failed to send email: ${err.message}`,
+    }
   }
 }
 
 // Is real SMTP configured?
 export function isRealDeliveryConfigured(): boolean {
-  return isRealSmtpConfigured()
+  return isSmtpConfigured()
+}
+
+// Is only the Gmail address missing? (Password is set but no user)
+export function isSmtpUserOnlyMissing(): boolean {
+  return isSmtpUserMissing()
 }
 
 // ── HTML Email Template ────────────────────────────────────────────────
