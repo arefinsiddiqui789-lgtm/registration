@@ -707,8 +707,18 @@ export function SuccessPage() {
                       ref={iframeRef}
                       srcDoc={pdfHtml}
                       className="w-full border-0 bg-white rounded-sm"
-                      style={{ height: "1123px", maxWidth: "794px" }}
+                      style={{ minHeight: "1123px", maxWidth: "794px", height: "1200px" }}
                       title="Registration Document"
+                      onLoad={() => {
+                        // Auto-size iframe to content height
+                        const iframe = iframeRef.current
+                        if (iframe && iframe.contentDocument) {
+                          const contentHeight = iframe.contentDocument.documentElement.scrollHeight
+                          if (contentHeight > 0) {
+                            iframe.style.height = contentHeight + "px"
+                          }
+                        }
+                      }}
                     />
                   </div>
                 </div>

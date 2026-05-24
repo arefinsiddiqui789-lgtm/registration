@@ -134,13 +134,13 @@ function generatePdfHtml(
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  html, body {
+  html {
     width: 794px;
-    height: 1123px;
-    overflow: hidden;
   }
 
   body {
+    width: 794px;
+    min-height: 1123px;
     font-family: Arial, Helvetica, sans-serif;
     color: #1e293b;
     font-size: 12px;
@@ -155,6 +155,7 @@ function generatePdfHtml(
   }
 
   @media print {
+    html, body { height: auto; min-height: auto; }
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 
@@ -262,7 +263,6 @@ function generatePdfHtml(
     padding: 10px 30px 8px;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
   }
 
   /* ── SECTION ───────────────────────────────────────── */
@@ -309,7 +309,6 @@ function generatePdfHtml(
     border-bottom: 1px solid #e2e8f0;
     border-right: 1px solid #e2e8f0;
     min-width: 0;
-    overflow: hidden;
   }
   .field:nth-child(2n) { border-right: none; }
   .field:nth-last-child(-n+2) { border-bottom: none; }
@@ -334,9 +333,6 @@ function generatePdfHtml(
     font-weight: 600;
     overflow-wrap: break-word;
     word-break: break-word;
-    hyphens: auto;
-    max-height: 32px;
-    overflow: hidden;
   }
   .field-value.na {
     color: #94a3b8;
