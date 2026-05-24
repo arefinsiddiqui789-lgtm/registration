@@ -7,18 +7,52 @@ let etherealAccount: {
   web: string
 } | null = null
 
+// Known placeholder values that should NOT be treated as real credentials
+const PLACEHOLDER_VALUES = new Set([
+  "your-email@gmail.com",
+  "your-16-char-app-password",
+  "your-email",
+  "your-password",
+  "changeme",
+  "xxx",
+])
+
+// Check if SMTP credentials look like real values (not placeholders)
+function isRealSmtpConfigured(): boolean {
+  const user = process.env.SMTP_USER || ""
+  const pass = process.env.SMTP_PASS || ""
+  if (!user || !pass) return false
+  if (PLACEHOLDER_VALUES.has(user) || PLACEHOLDER_VALUES.has(pass)) return false
+  if (user.includes("your-") || pass.includes("your-")) return false
+  return true
+}
+
+// Create Ethereal test account (cached)
+async function getEtherealAccount() {
+  if (etherealAccount) return etherealAccount
+  try {
+    console.log("Creating Ethereal test email account...")
+    etherealAccount = await nodemailer.createTestAccount()
+    console.log("Ethereal account created:", etherealAccount.user)
+    return etherealAccount
+  } catch (err) {
+    console.error("Failed to create Ethereal account:", err)
+    return null
+  }
+}
+
 // Create reusable transporter using SMTP
 async function getTransporter() {
-  const smtpHost = process.env.SMTP_HOST || ""
-  const smtpPort = parseInt(process.env.SMTP_PORT || "587")
-  const smtpUser = process.env.SMTP_USER || ""
-  const smtpPass = process.env.SMTP_PASS || ""
+  // If real Gmail SMTP credentials are configured, use them
+  if (isRealSmtpConfigured()) {
+    const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com"
+    const smtpPort = parseInt(process.env.SMTP_PORT || "587")
+    const smtpUser = process.env.SMTP_USER!
+    const smtpPass = process.env.SMTP_PASS!
 
-  // If Gmail SMTP credentials are configured, use them
-  if (smtpUser && smtpPass) {
     return {
       transporter: nodemailer.createTransport({
-        host: smtpHost || "smtp.gmail.com",
+        host: smtpHost,
         port: smtpPort,
         secure: smtpPort === 465,
         auth: {
@@ -29,21 +63,12 @@ async function getTransporter() {
       fromEmail: smtpUser,
       fromName: process.env.SMTP_FROM_NAME || "FrameMaxx Agency",
       isEthereal: false,
-      previewUrl: null,
     }
   }
 
-  // No Gmail configured — auto-create Ethereal test account
-  if (!etherealAccount) {
-    try {
-      console.log("No SMTP configured. Creating Ethereal test email account...")
-      etherealAccount = await nodemailer.createTestAccount()
-      console.log("Ethereal account created:", etherealAccount.user)
-    } catch (err) {
-      console.error("Failed to create Ethereal account:", err)
-      return null
-    }
-  }
+  // No real SMTP configured — auto-create Ethereal test account
+  const account = await getEtherealAccount()
+  if (!account) return null
 
   return {
     transporter: nodemailer.createTransport({
@@ -51,14 +76,13 @@ async function getTransporter() {
       port: 587,
       secure: false,
       auth: {
-        user: etherealAccount.user,
-        pass: etherealAccount.pass,
+        user: account.user,
+        pass: account.pass,
       },
     }),
-    fromEmail: etherealAccount.user,
+    fromEmail: account.user,
     fromName: "FrameMaxx Agency",
     isEthereal: true,
-    previewUrl: null as string | null,
   }
 }
 
@@ -78,10 +102,10 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail({ to, subject, text, html }: SendEmailOptions): Promise<SendEmailResult> {
-  const config = await getTransporter()
+  let config = await getTransporter()
 
   if (!config) {
-    console.warn("No email transport available. Email would have been sent to:", to)
+    console.warn("No email transport available.")
     return {
       success: false,
       message: "No email transport available.",
@@ -115,18 +139,59 @@ export async function sendEmail({ to, subject, text, html }: SendEmailOptions): 
         ? "Email sent via test server"
         : "Email sent successfully",
     }
-  } catch (error) {
+  } catch (error: unknown) {
+    // If Gmail auth fails, try Ethereal as fallback
+    if (!config.isEthereal) {
+      console.warn("Gmail SMTP failed, falling back to Ethereal test email...")
+      const account = await getEtherealAccount()
+      if (account) {
+        const fallbackTransporter = nodemailer.createTransport({
+          host: "smtp.ethereal.email",
+          port: 587,
+          secure: false,
+          auth: {
+            user: account.user,
+            pass: account.pass,
+          },
+        })
+
+        try {
+          const info = await fallbackTransporter.sendMail({
+            from: `"FrameMaxx Agency" <${account.user}>`,
+            to,
+            subject,
+            text,
+            html,
+          })
+
+          const previewUrl = nodemailer.getTestMessageUrl(info)
+          console.log("📧 Email sent via Ethereal fallback. Preview at:", previewUrl)
+
+          return {
+            success: true,
+            messageId: info.messageId,
+            previewUrl: previewUrl || undefined,
+            isEthereal: true,
+            message: "Email sent via test server (Gmail auth failed)",
+          }
+        } catch (fallbackError) {
+          console.error("Ethereal fallback also failed:", fallbackError)
+        }
+      }
+    }
+
     console.error("Failed to send email:", error)
+    const err = error as Error
     return {
       success: false,
-      message: "Failed to send email. Check SMTP configuration.",
+      message: err.message || "Failed to send email.",
     }
   }
 }
 
 // Check if real SMTP (Gmail) is configured vs Ethereal fallback
 export function isSmtpConfigured(): boolean {
-  return !!(process.env.SMTP_USER && process.env.SMTP_PASS)
+  return isRealSmtpConfigured()
 }
 
 // Generate a beautiful HTML email template for registration confirmation
