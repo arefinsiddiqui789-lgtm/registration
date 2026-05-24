@@ -14,6 +14,7 @@ import {
   FileText,
   CheckCircle,
   AlertCircle,
+  ExternalLink,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -28,6 +29,8 @@ export function SuccessPage() {
   const [emailContent, setEmailContent] = useState<string | null>(null)
   const [emailSent, setEmailSent] = useState(false)
   const [emailSending, setEmailSending] = useState(true)
+  const [emailPreviewUrl, setEmailPreviewUrl] = useState<string | null>(null)
+  const [isGmail, setIsGmail] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
@@ -73,8 +76,14 @@ export function SuccessPage() {
       if (result.success) {
         setEmailContent(result.emailContent)
         setEmailSent(result.emailSent)
+        setEmailPreviewUrl(result.previewUrl || null)
+        setIsGmail(result.isGmail || false)
         if (result.emailSent) {
-          toast.success("Confirmation email sent to " + data.email)
+          if (result.isGmail) {
+            toast.success("Confirmation email sent to " + data.email)
+          } else {
+            toast.success("Confirmation email sent!")
+          }
         }
       }
     } catch {
@@ -701,6 +710,17 @@ export function SuccessPage() {
                       </p>
                     </div>
                   </div>
+                  {emailPreviewUrl && (
+                    <a
+                      href={emailPreviewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-xs font-medium text-[var(--brand)] hover:underline bg-[var(--brand)]/5 px-3 py-2 rounded-lg"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      View delivered email in browser
+                    </a>
+                  )}
                   {emailContent && (
                     <details className="group">
                       <summary className="text-xs text-[var(--brand)] cursor-pointer hover:underline font-medium">

@@ -1,25 +1,73 @@
 import nodemailer from "nodemailer"
 
+// Cache the Ethereal test account so we only create it once
+let etherealAccount: {
+  user: string
+  pass: string
+  web: string
+} | null = null
+
 // Create reusable transporter using SMTP
-const getTransporter = () => {
-  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com"
+async function getTransporter() {
+  const smtpHost = process.env.SMTP_HOST || ""
   const smtpPort = parseInt(process.env.SMTP_PORT || "587")
   const smtpUser = process.env.SMTP_USER || ""
   const smtpPass = process.env.SMTP_PASS || ""
 
-  if (!smtpUser || !smtpPass) {
-    return null
+  // If Gmail SMTP credentials are configured, use them
+  if (smtpUser && smtpPass) {
+    return {
+      transporter: nodemailer.createTransport({
+        host: smtpHost || "smtp.gmail.com",
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      }),
+      fromEmail: smtpUser,
+      fromName: process.env.SMTP_FROM_NAME || "FrameMaxx Agency",
+      isEthereal: false,
+      previewUrl: null,
+    }
   }
 
-  return nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpPort === 465, // true for 465, false for other ports
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  })
+  // No Gmail configured — auto-create Ethereal test account
+  if (!etherealAccount) {
+    try {
+      console.log("No SMTP configured. Creating Ethereal test email account...")
+      etherealAccount = await nodemailer.createTestAccount()
+      console.log("Ethereal account created:", etherealAccount.user)
+    } catch (err) {
+      console.error("Failed to create Ethereal account:", err)
+      return null
+    }
+  }
+
+  return {
+    transporter: nodemailer.createTransport({
+      host: "smtp.ethereal.email",
+      port: 587,
+      secure: false,
+      auth: {
+        user: etherealAccount.user,
+        pass: etherealAccount.pass,
+      },
+    }),
+    fromEmail: etherealAccount.user,
+    fromName: "FrameMaxx Agency",
+    isEthereal: true,
+    previewUrl: null as string | null,
+  }
+}
+
+export interface SendEmailResult {
+  success: boolean
+  message: string
+  messageId?: string
+  previewUrl?: string
+  isEthereal?: boolean
 }
 
 export interface SendEmailOptions {
@@ -29,33 +77,43 @@ export interface SendEmailOptions {
   html: string
 }
 
-export async function sendEmail({ to, subject, text, html }: SendEmailOptions) {
-  const transporter = getTransporter()
+export async function sendEmail({ to, subject, text, html }: SendEmailOptions): Promise<SendEmailResult> {
+  const config = await getTransporter()
 
-  if (!transporter) {
-    console.warn("SMTP not configured. Email would have been sent to:", to)
+  if (!config) {
+    console.warn("No email transport available. Email would have been sent to:", to)
     return {
       success: false,
-      message: "SMTP not configured. Set SMTP_USER and SMTP_PASS environment variables.",
+      message: "No email transport available.",
     }
   }
 
-  const fromEmail = process.env.SMTP_USER || "noreply@framemaxx.com"
-  const fromName = process.env.SMTP_FROM_NAME || "FrameMaxx Agency"
-
   try {
-    const info = await transporter.sendMail({
-      from: `"${fromName}" <${fromEmail}>`,
+    const info = await config.transporter.sendMail({
+      from: `"${config.fromName}" <${config.fromEmail}>`,
       to,
       subject,
       text,
       html,
     })
 
-    console.log("Email sent successfully:", info.messageId)
+    // Get the Ethereal preview URL
+    const previewUrl = config.isEthereal ? nodemailer.getTestMessageUrl(info) : null
+
+    if (config.isEthereal && previewUrl) {
+      console.log("📧 Email sent via Ethereal. Preview at:", previewUrl)
+    } else {
+      console.log("📧 Email sent successfully:", info.messageId)
+    }
+
     return {
       success: true,
       messageId: info.messageId,
+      previewUrl: previewUrl || undefined,
+      isEthereal: config.isEthereal,
+      message: config.isEthereal
+        ? "Email sent via test server"
+        : "Email sent successfully",
     }
   } catch (error) {
     console.error("Failed to send email:", error)
@@ -66,7 +124,7 @@ export async function sendEmail({ to, subject, text, html }: SendEmailOptions) {
   }
 }
 
-// Check if SMTP is configured
+// Check if real SMTP (Gmail) is configured vs Ethereal fallback
 export function isSmtpConfigured(): boolean {
   return !!(process.env.SMTP_USER && process.env.SMTP_PASS)
 }

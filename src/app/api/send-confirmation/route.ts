@@ -58,29 +58,24 @@ Keep it concise and professional.`,
       emailContent,
     })
 
-    // Attempt to send the email
-    let emailSent = false
-    let emailMessage = ""
+    // Send the email (uses Gmail if configured, otherwise auto-creates Ethereal test account)
+    const result = await sendEmail({
+      to: email,
+      subject: `FrameMaxx Registration Confirmation - ${trackingId}`,
+      text: textContent,
+      html: htmlContent,
+    })
 
-    if (isSmtpConfigured()) {
-      const result = await sendEmail({
-        to: email,
-        subject: `FrameMaxx Registration Confirmation - ${trackingId}`,
-        text: textContent,
-        html: htmlContent,
-      })
-      emailSent = result.success
-      emailMessage = result.message || ""
-    } else {
-      emailMessage = "SMTP not configured"
-    }
+    const isGmail = isSmtpConfigured()
 
     return NextResponse.json({
       success: true,
       emailContent,
       trackingId,
-      emailSent,
-      emailMessage,
+      emailSent: result.success,
+      emailMessage: result.message,
+      isGmail,
+      previewUrl: result.previewUrl || null,
     })
   } catch (error) {
     console.error("Email confirmation error:", error)
