@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Registration {
+  id                String   @id @default(cuid())
+  trackingId        String   @unique
+  firstName         String
+  lastName          String
+  dateOfBirth       String
+  gender            String
+  nationality       String
+  nidPassportType   String   // "NID" or "Passport"
+  nidPassportNumber String
+  email             String
+  phone             String
+  address           String
+  city              String
+  state             String
+  postalCode        String
+  country           String
+  occupation        String
+  company           String
+  experience        String
+  skills            String
+  department        String
+  photoPath         String?
+  cvPath            String?
+  nidPassportPath   String?
+  signatureData     String   // base64 signature image
+  agreeToTerms      Boolean
+  agreeToPrivacy    Boolean
+  status            String   @default("pending")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
